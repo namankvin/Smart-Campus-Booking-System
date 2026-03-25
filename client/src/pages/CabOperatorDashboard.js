@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { cabService } from '../services/api';
+import NotificationCenter from '../components/NotificationCenter';
 
 const CabOperatorDashboard = () => {
   const { user, logout } = useAuth();
@@ -57,6 +58,7 @@ const CabOperatorDashboard = () => {
         <h1>Cab Operator Dashboard</h1>
         <div className="navbar-menu">
           <span>Welcome, {user?.name}</span>
+          <NotificationCenter />
           <button onClick={handleLogout}>Logout</button>
         </div>
       </nav>

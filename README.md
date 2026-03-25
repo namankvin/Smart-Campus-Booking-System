@@ -11,6 +11,8 @@ A comprehensive web application for booking campus resources including classroom
 - Vendor menu management and order status updates
 - Admin dashboard for approvals, reports, and user role management
 - Dedicated dashboards for Student/Faculty, Vendor, Cab Operator, and Admin
+- In-app notification center with unread tracking and mark-as-read actions
+- Real-time user-scoped notification delivery over Socket.IO
 - Responsive design for mobile and desktop
 
 ## Tech Stack
@@ -33,12 +35,15 @@ A comprehensive web application for booking campus resources including classroom
    MONGO_URI=your_mongodb_connection_string
    GOOGLE_CLIENT_ID=your_google_client_id
    GOOGLE_CLIENT_SECRET=your_google_client_secret
+   REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
    JWT_SECRET=your_jwt_secret
+   JWT_EXPIRES_IN=12h
    EMAIL_USER=your_email_for_notifications
    EMAIL_PASS=your_email_password
    INSTITUTIONAL_EMAIL_DOMAIN=yourcollege.edu
    FOOD_SLOT_CAPACITY=50
    CAMPUS_LOCATIONS=Library,Main Gate,Hostel,Academic Block
+   REACT_APP_SOCKET_URL=http://localhost:5000
    ```
 4. Start the development server:
    ```bash
@@ -51,9 +56,17 @@ A comprehensive web application for booking campus resources including classroom
 - Login with institutional Google account
 - Navigate based on your role (Student, Faculty, Vendor, Admin)
 
+## Authentication Notes
+
+- The backend verifies Google ID tokens using `google-auth-library`.
+- Client-side decoded profile data is no longer trusted for login.
+- Authentication attempts (success/failure/logout) are logged for auditing.
+
 ## API Documentation
 
 See the routes in `server/routes/` for API endpoints.
+
+Notification APIs are available under `server/routes/notification.js`.
 
 ## Testing
 
@@ -61,6 +74,51 @@ Run tests with:
 ```bash
 npm test
 ```
+
+Additional test commands:
+```bash
+npm run test:server
+npm run test:client
+npm run test:all
+```
+
+## Implementation Status (Completed)
+
+- Phase 1-4 core flows implemented:
+   - classroom booking (pending/approval/rejection/waitlist/recurring)
+   - food ordering (menu availability, slot capacity, status transitions)
+   - booking cancellation rules (classroom/food/cab)
+   - cab booking assignment with release on cancellation
+- Role-based dashboards for Student/Faculty, Vendor, Cab Operator, and Admin
+- Admin features:
+   - pending classroom approval/rejection
+   - reports endpoint and dashboard summary
+   - user role management UI and API
+- Secure auth improvements:
+   - backend Google ID token verification via `google-auth-library`
+   - institutional domain restriction support
+   - auth activity logging
+- Notification system:
+   - persistent notifications model + API
+   - in-app notification center with unread tracking
+   - real-time user-scoped Socket.IO delivery
+- Automated test infrastructure:
+   - backend integration tests (booking/admin/notifications)
+   - frontend tests for key auth/routing/notification components
+
+## Remaining Work
+
+- Frontend test warning cleanup:
+   - remove remaining React `act(...)` warnings in client tests
+- Expand test coverage:
+   - add integration tests for Google auth verification path (mocked token verification)
+   - add more UI tests for booking forms and role dashboards
+- Production hardening:
+   - disable development role selection at login in production
+   - enforce admin-only role assignment policy end-to-end
+- Developer tooling:
+   - add seed/reset scripts for classrooms, menus, cabs, and sample users
+   - add CI workflow to run `npm run test:all` and `npm run build`
 
 ## Deployment
 

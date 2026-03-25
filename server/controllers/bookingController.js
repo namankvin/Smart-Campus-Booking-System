@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const Menu = require('../models/Menu');
 const Cab = require('../models/Cab');
 const Log = require('../models/Log');
+const { createNotification, notifyRoles } = require('../utils/notifications');
 
 const ACTIVE_FOOD_STATUSES = ['Accepted', 'Preparing', 'Ready'];
 
@@ -159,6 +160,26 @@ const createClassroomBooking = async (req, res, io) => {
       details: { bookingIds: createdBookings.map((b) => b._id), recurringGroupId }
     });
 
+    await createNotification({
+      recipient: req.user.id,
+      title: 'Classroom request submitted',
+      message: createdBookings.some((b) => b.status === 'Waitlisted')
+        ? 'Your booking request has been waitlisted for review.'
+        : 'Your classroom booking request is pending admin approval.',
+      type: 'info',
+      metadata: { bookingIds: createdBookings.map((b) => b._id) },
+      io
+    });
+
+    await notifyRoles({
+      roles: ['Admin'],
+      title: 'New classroom booking request',
+      message: `${req.user.email} submitted a classroom request.`,
+      type: 'info',
+      metadata: { bookingIds: createdBookings.map((b) => b._id) },
+      io
+    });
+
     io.emit('new_pending_booking', { bookings: createdBookings });
 
     res.json({
@@ -259,6 +280,15 @@ const cancelBooking = async (req, res, io) => {
         nextWaitlisted.waitlistPosition = null;
         await nextWaitlisted.save();
         io.emit('waitlist_promoted', { booking: nextWaitlisted });
+
+        await createNotification({
+          recipient: nextWaitlisted.user,
+          title: 'Waitlist updated',
+          message: 'Your waitlisted classroom request moved to pending approval.',
+          type: 'success',
+          metadata: { bookingId: nextWaitlisted._id },
+          io
+        });
       }
     }
     
@@ -268,6 +298,26 @@ const cancelBooking = async (req, res, io) => {
       user: req.user.id,
       details: { bookingId: id }
     });
+
+    await createNotification({
+      recipient: req.user.id,
+      title: 'Booking cancelled',
+      message: `Your ${booking.type} booking has been cancelled.`,
+      type: 'warning',
+      metadata: { bookingId: id, type: booking.type },
+      io
+    });
+
+    if (booking.type === 'classroom') {
+      await notifyRoles({
+        roles: ['Admin'],
+        title: 'Classroom booking cancelled',
+        message: `${req.user.email} cancelled a classroom request/booking.`,
+        type: 'warning',
+        metadata: { bookingId: id },
+        io
+      });
+    }
     
     io.emit('booking_cancelled', { bookingId: id });
     
@@ -356,6 +406,24 @@ const placeFoodOrder = async (req, res, io) => {
       user: req.user.id,
       details: { bookingId: booking._id }
     });
+
+    await createNotification({
+      recipient: req.user.id,
+      title: 'Food order accepted',
+      message: `Your order with ${vendor} was accepted.`,
+      type: 'success',
+      metadata: { bookingId: booking._id, vendor },
+      io
+    });
+
+    await notifyRoles({
+      roles: ['Vendor'],
+      title: 'New food order',
+      message: `A new order was placed for ${vendor}.`,
+      type: 'info',
+      metadata: { bookingId: booking._id, vendor },
+      io
+    });
     
     io.emit('new_food_order', { booking });
     
@@ -433,6 +501,24 @@ const bookCab = async (req, res, io) => {
       action: 'cab_booked',
       user: req.user.id,
       details: { bookingId: booking._id }
+    });
+
+    await createNotification({
+      recipient: req.user.id,
+      title: 'Cab booking confirmed',
+      message: `Cab ${availableCab.id} has been assigned to your ride.`,
+      type: 'success',
+      metadata: { bookingId: booking._id, cabId: availableCab.id },
+      io
+    });
+
+    await notifyRoles({
+      roles: ['Cab Operator'],
+      title: 'New cab assignment',
+      message: `Cab ${availableCab.id} has a new booking.`,
+      type: 'info',
+      metadata: { bookingId: booking._id, cabId: availableCab.id },
+      io
     });
     
     io.emit('new_cab_booking', { booking, cab: availableCab });

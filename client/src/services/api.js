@@ -62,4 +62,10 @@ export const adminService = {
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role })
 };
 
+export const notificationService = {
+  getMine: (limit = 20) => api.get('/notifications', { params: { limit } }),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all')
+};
+
 export default api;

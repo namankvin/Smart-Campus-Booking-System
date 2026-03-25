@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
+const { createNotification } = require('../utils/notifications');
 
 // Get all pending classroom bookings
 const getPendingBookings = async (req, res) => {
@@ -63,6 +64,15 @@ const approveBooking = async (req, res, io) => {
       startTime: { $lt: booking.endTime },
       endTime: { $gt: booking.startTime }
     }, { status: 'Rejected' });
+
+    await createNotification({
+      recipient: booking.user,
+      title: 'Classroom booking approved',
+      message: 'Your classroom booking request was approved by admin.',
+      type: 'success',
+      metadata: { bookingId: booking._id },
+      io
+    });
     
     io.emit('booking_approved', { booking });
     res.json(booking);
@@ -88,6 +98,15 @@ const rejectBooking = async (req, res, io) => {
       action: 'booking_rejected',
       user: req.user.id,
       details: { bookingId: id }
+    });
+
+    await createNotification({
+      recipient: booking.user,
+      title: 'Classroom booking rejected',
+      message: 'Your classroom booking request was rejected by admin.',
+      type: 'error',
+      metadata: { bookingId: booking._id },
+      io
     });
     
     io.emit('booking_rejected', { booking });
@@ -130,6 +149,15 @@ const updateOrderStatus = async (req, res, io) => {
       action: 'order_status_updated',
       user: req.user.id,
       details: { bookingId: id, status }
+    });
+
+    await createNotification({
+      recipient: booking.user,
+      title: 'Food order status updated',
+      message: `Your order is now ${status}.`,
+      type: 'info',
+      metadata: { bookingId: booking._id, status },
+      io
     });
     
     io.emit('order_status_updated', { booking });
@@ -209,6 +237,15 @@ const updateUserRole = async (req, res) => {
       action: 'user_role_updated',
       user: req.user.id,
       details: { targetUserId: id, role }
+    });
+
+    await createNotification({
+      recipient: user._id,
+      title: 'Role updated',
+      message: `Your account role was updated to ${role}.`,
+      type: 'info',
+      metadata: { role },
+      io: req.io
     });
 
     res.json(user);

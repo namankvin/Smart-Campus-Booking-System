@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { bookingService, cabService } from '../services/api';
+import { bookingService } from '../services/api';
 
 const CabBooking = ({ onSuccess }) => {
   const [formData, setFormData] = useState({

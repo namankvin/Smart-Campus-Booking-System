@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../services/authContext';
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -9,21 +9,8 @@ const Login = ({ onLogin }) => {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
-      // Decode JWT to get user info
-      const token = credentialResponse.credential;
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      
-      const userData = JSON.parse(jsonPayload);
-      
       const response = await login({
-        googleId: userData.sub,
-        email: userData.email,
-        name: userData.name,
-        profilePicture: userData.picture,
+        credential: credentialResponse.credential,
         role
       });
       

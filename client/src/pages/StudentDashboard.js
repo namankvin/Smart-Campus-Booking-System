@@ -5,6 +5,7 @@ import ClassroomBooking from '../components/ClassroomBooking';
 import FoodOrdering from '../components/FoodOrdering';
 import CabBooking from '../components/CabBooking';
 import BookingHistory from '../components/BookingHistory';
+import NotificationCenter from '../components/NotificationCenter';
 
 const StudentDashboard = () => {
   const { user, logout } = useAuth();
@@ -22,6 +23,7 @@ const StudentDashboard = () => {
         <h1>{user?.role === 'Faculty' ? 'Faculty Dashboard' : 'Student Dashboard'}</h1>
         <div className="navbar-menu">
           <span>Welcome, {user?.name}!</span>
+          <NotificationCenter />
           <button onClick={handleLogout}>Logout</button>
         </div>
       </nav>

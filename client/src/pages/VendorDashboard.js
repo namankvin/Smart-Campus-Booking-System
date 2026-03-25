@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { adminService, menuService } from '../services/api';
+import NotificationCenter from '../components/NotificationCenter';
 
 const VendorDashboard = () => {
   const { user, logout } = useAuth();
@@ -40,9 +41,21 @@ const VendorDashboard = () => {
       return;
     }
 
+    const loadVendorData = async () => {
+      try {
+        const [menuRes, ordersRes] = await Promise.all([
+          menuService.getByVendor(vendorName, menuDate),
+          adminService.getVendorOrders(vendorName)
+        ]);
+        setItems(menuRes.data.items || []);
+        setOrders(ordersRes.data || []);
+      } catch (err) {
+        setError('Failed to fetch vendor data');
+      }
+    };
+
     if (vendorName) {
-      fetchMenu();
-      fetchOrders();
+      loadVendorData();
     }
   }, [vendorName, menuDate, defaultVendorName]);
 
@@ -101,6 +114,7 @@ const VendorDashboard = () => {
         <h1>Vendor Dashboard</h1>
         <div className="navbar-menu">
           <span>Welcome, {user?.name}</span>
+          <NotificationCenter />
           <button onClick={handleLogout}>Logout</button>
         </div>
       </nav>

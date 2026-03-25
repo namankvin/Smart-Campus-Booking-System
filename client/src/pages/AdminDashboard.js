@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { adminService } from '../services/api';
+import NotificationCenter from '../components/NotificationCenter';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -75,6 +76,7 @@ const AdminDashboard = () => {
         <h1>Admin Dashboard</h1>
         <div className="navbar-menu">
           <span>Welcome, {user?.name}</span>
+          <NotificationCenter />
           <button onClick={handleLogout}>Logout</button>
         </div>
       </nav>

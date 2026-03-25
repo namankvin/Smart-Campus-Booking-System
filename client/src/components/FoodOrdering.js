@@ -13,19 +13,19 @@ const FoodOrdering = ({ onSuccess }) => {
   const vendors = ['Taaza Tiffins', 'Domino\'s'];
 
   useEffect(() => {
+    const loadMenu = async () => {
+      try {
+        const response = await menuService.getByVendor(selectedVendor, date);
+        setMenus(response.data.items || []);
+      } catch (err) {
+        setError('Failed to fetch menu');
+      }
+    };
+
     if (selectedVendor && date) {
-      fetchMenu();
+      loadMenu();
     }
   }, [selectedVendor, date]);
-
-  const fetchMenu = async () => {
-    try {
-      const response = await menuService.getByVendor(selectedVendor, date);
-      setMenus(response.data.items || []);
-    } catch (err) {
-      setError('Failed to fetch menu');
-    }
-  };
 
   const addToCart = (item) => {
     const existing = cart.find(i => i.name === item.name);
