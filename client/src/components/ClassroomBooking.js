@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService, classroomService } from '../services/api';
+import { useAuth } from '../services/authContext';
 
 const ClassroomBooking = ({ onSuccess }) => {
+  const { user } = useAuth();
+  const isFaculty = user?.role === 'Faculty';
+
   const [classrooms, setClassrooms] = useState([]);
   const [formData, setFormData] = useState({
     classroom: '',
     date: '',
     startTime: '',
     endTime: '',
-    purpose: ''
+    purpose: '',
+    joinWaitlist: false,
+    recurrenceType: 'none',
+    recurrenceCount: 1
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -27,19 +34,49 @@ const ClassroomBooking = ({ onSuccess }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (formData.startTime >= formData.endTime) {
+      setError('End time must be after start time');
+      return;
+    }
+
     try {
       await bookingService.createClassroomBooking(formData);
-      setSuccess('Classroom booking submitted for approval!');
-      setFormData({ classroom: '', date: '', startTime: '', endTime: '', purpose: '' });
+      setSuccess(
+        formData.recurrenceType !== 'none'
+          ? 'Recurring classroom booking submitted for approval!'
+          : 'Classroom booking submitted for approval!'
+      );
+      setError('');
+      setFormData({
+        classroom: '',
+        date: '',
+        startTime: '',
+        endTime: '',
+        purpose: '',
+        joinWaitlist: false,
+        recurrenceType: 'none',
+        recurrenceCount: 1
+      });
       if (onSuccess) onSuccess();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create booking');
+      const apiError = err.response?.data;
+      if (apiError?.code === 'PENDING_EXISTS') {
+        setError('A pending request already exists for this slot. You can enable join waitlist and resubmit.');
+      } else if (Array.isArray(apiError?.conflicts) && apiError.conflicts.length > 0) {
+        setError(`Approved conflicts on: ${apiError.conflicts.join(', ')}`);
+      } else {
+        setError(apiError?.error || 'Failed to create booking');
+      }
     }
   };
 
@@ -79,6 +116,46 @@ const ClassroomBooking = ({ onSuccess }) => {
           <label>Purpose</label>
           <textarea name="purpose" value={formData.purpose} onChange={handleChange} required></textarea>
         </div>
+
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input
+              type="checkbox"
+              name="joinWaitlist"
+              checked={formData.joinWaitlist}
+              onChange={handleChange}
+            />
+            Join waitlist if a pending request already exists for this slot
+          </label>
+        </div>
+
+        {isFaculty && (
+          <>
+            <div className="form-group">
+              <label>Recurrence</label>
+              <select name="recurrenceType" value={formData.recurrenceType} onChange={handleChange}>
+                <option value="none">None (single booking)</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            {formData.recurrenceType !== 'none' && (
+              <div className="form-group">
+                <label>Occurrences (max 16)</label>
+                <input
+                  type="number"
+                  name="recurrenceCount"
+                  min="1"
+                  max="16"
+                  value={formData.recurrenceCount}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            )}
+          </>
+        )}
         
         <button type="submit" className="button">Submit Booking Request</button>
       </form>

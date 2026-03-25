@@ -5,11 +5,12 @@ A comprehensive web application for booking campus resources including classroom
 ## Features
 
 - Google OAuth authentication with role-based access control
-- Classroom booking with admin approval and waitlist
+- Classroom booking with admin approval, waitlist, and faculty recurring scheduling
 - Food ordering from campus vendors
-- Electric cab booking with real-time availability
-- Vendor menu management
-- Admin dashboard for approvals and reports
+- Electric cab booking with assignment and cancellation rules
+- Vendor menu management and order status updates
+- Admin dashboard for approvals, reports, and user role management
+- Dedicated dashboards for Student/Faculty, Vendor, Cab Operator, and Admin
 - Responsive design for mobile and desktop
 
 ## Tech Stack
@@ -35,6 +36,9 @@ A comprehensive web application for booking campus resources including classroom
    JWT_SECRET=your_jwt_secret
    EMAIL_USER=your_email_for_notifications
    EMAIL_PASS=your_email_password
+   INSTITUTIONAL_EMAIL_DOMAIN=yourcollege.edu
+   FOOD_SLOT_CAPACITY=50
+   CAMPUS_LOCATIONS=Library,Main Gate,Hostel,Academic Block
    ```
 4. Start the development server:
    ```bash

@@ -19,7 +19,7 @@ const StudentDashboard = () => {
   return (
     <div>
       <nav className="navbar">
-        <h1>Smart Campus Booking</h1>
+        <h1>{user?.role === 'Faculty' ? 'Faculty Dashboard' : 'Student Dashboard'}</h1>
         <div className="navbar-menu">
           <span>Welcome, {user?.name}!</span>
           <button onClick={handleLogout}>Logout</button>

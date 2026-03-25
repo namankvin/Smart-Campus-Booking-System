@@ -12,7 +12,7 @@ const BookingHistory = () => {
 
   const fetchBookings = async () => {
     try {
-      const response = await bookingService.getFoodOrders();
+      const response = await bookingService.getUserBookings();
       setBookings(response.data);
       setLoading(false);
     } catch (err) {
@@ -64,7 +64,7 @@ const BookingHistory = () => {
                 <td>{new Date(booking.date || booking.pickupTime).toLocaleDateString()}</td>
                 <td><strong>{booking.status}</strong></td>
                 <td>
-                  {['Pending', 'Accepted'].includes(booking.status) && (
+                  {['Pending', 'Waitlisted', 'Accepted', 'Confirmed', 'Approved'].includes(booking.status) && (
                     <button onClick={() => handleCancel(booking._id)} className="button button-danger">Cancel</button>
                   )}
                 </td>

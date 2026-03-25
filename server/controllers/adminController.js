@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Log = require('../models/Log');
+const Classroom = require('../models/Classroom');
 
 // Get all pending classroom bookings
 const getPendingBookings = async (req, res) => {
@@ -20,11 +21,32 @@ const getPendingBookings = async (req, res) => {
 const approveBooking = async (req, res, io) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      { status: 'Approved' },
-      { new: true }
-    );
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    if (booking.type !== 'classroom') {
+      return res.status(400).json({ error: 'Only classroom bookings require approval' });
+    }
+
+    const conflict = await Booking.findOne({
+      _id: { $ne: id },
+      type: 'classroom',
+      classroom: booking.classroom,
+      date: booking.date,
+      status: 'Approved',
+      startTime: { $lt: booking.endTime },
+      endTime: { $gt: booking.startTime }
+    });
+
+    if (conflict) {
+      return res.status(409).json({ error: 'An approved booking already exists for this slot' });
+    }
+
+    booking.status = 'Approved';
+    await booking.save();
     
     await Log.create({
       action: 'booking_approved',
@@ -32,15 +54,15 @@ const approveBooking = async (req, res, io) => {
       details: { bookingId: id }
     });
     
-    // Reject conflicting pending bookings
-    if (booking.type === 'classroom') {
-      await Booking.updateMany({
-        _id: { $ne: id },
-        classroom: booking.classroom,
-        date: booking.date,
-        status: 'Pending'
-      }, { status: 'Rejected' });
-    }
+    await Booking.updateMany({
+      _id: { $ne: id },
+      type: 'classroom',
+      classroom: booking.classroom,
+      date: booking.date,
+      status: 'Pending',
+      startTime: { $lt: booking.endTime },
+      endTime: { $gt: booking.startTime }
+    }, { status: 'Rejected' });
     
     io.emit('booking_approved', { booking });
     res.json(booking);
@@ -53,11 +75,14 @@ const approveBooking = async (req, res, io) => {
 const rejectBooking = async (req, res, io) => {
   try {
     const { id } = req.params;
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      { status: 'Rejected' },
-      { new: true }
-    );
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    booking.status = 'Rejected';
+    await booking.save();
     
     await Log.create({
       action: 'booking_rejected',
@@ -86,12 +111,26 @@ const updateOrderStatus = async (req, res, io) => {
     };
     
     const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (booking.status === 'Completed') {
+      return res.status(400).json({ error: 'Completed orders cannot be modified' });
+    }
+
     if (!validTransitions[booking.status] || !validTransitions[booking.status].includes(status)) {
       return res.status(400).json({ error: 'Invalid status transition' });
     }
     
     booking.status = status;
     await booking.save();
+
+    await Log.create({
+      action: 'order_status_updated',
+      user: req.user.id,
+      details: { bookingId: id, status }
+    });
     
     io.emit('order_status_updated', { booking });
     res.json(booking);
@@ -142,11 +181,69 @@ const getClassroomsByAdmin = async (req, res) => {
   }
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.find({}, '-googleId').sort({ createdAt: -1 });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
+    }
+
+    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await Log.create({
+      action: 'user_role_updated',
+      user: req.user.id,
+      details: { targetUserId: id, role }
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getVendorOrders = async (req, res) => {
+  try {
+    const { vendor } = req.query;
+    if (!vendor) {
+      return res.status(400).json({ error: 'Vendor is required' });
+    }
+
+    const orders = await Booking.find({
+      type: 'food',
+      vendor,
+      status: { $in: ['Accepted', 'Preparing', 'Ready'] }
+    }).populate('user').sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getPendingBookings,
   approveBooking,
   rejectBooking,
   updateOrderStatus,
   generateReports,
-  getClassroomsByAdmin
+  getClassroomsByAdmin,
+  getUsers,
+  updateUserRole,
+  getVendorOrders
 };

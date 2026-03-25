@@ -4,17 +4,27 @@ const jwt = require('jsonwebtoken');
 // Google OAuth callback (simulated)
 const googleLogin = async (req, res) => {
   try {
-    const { googleId, email, name, profilePicture } = req.body;
+    const { googleId, email, name, profilePicture, role: requestedRole } = req.body;
+
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+    const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
+
+    if (institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
+      return res.status(403).json({
+        error: `Only institutional email accounts (@${institutionalDomain}) are allowed`
+      });
+    }
     
     let user = await User.findOne({ googleId });
     
     if (!user) {
+      const normalizedRole = allowedRoles.includes(requestedRole) ? requestedRole : 'Student';
       user = new User({
         googleId,
         email,
         name,
         profilePicture,
-        role: 'Student' // Default role
+        role: normalizedRole
       });
       await user.save();
     }

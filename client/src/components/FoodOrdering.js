@@ -47,12 +47,18 @@ const FoodOrdering = ({ onSuccess }) => {
     }
 
     try {
+      const normalizedItems = cart.map((item) => ({
+        name: item.name,
+        quantity: item.quantity
+      }));
+
       await bookingService.placeFoodOrder({
         vendor: selectedVendor,
-        items: cart,
+        items: normalizedItems,
         pickupTime
       });
       setSuccess('Order placed successfully!');
+      setError('');
       setCart([]);
       if (onSuccess) onSuccess();
     } catch (err) {
@@ -106,8 +112,13 @@ const FoodOrdering = ({ onSuccess }) => {
           <h3>Total: ${totalCost}</h3>
           
           <div className="form-group">
-            <label>Pickup Time</label>
-            <input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} required />
+            <label>Pickup Date & Time</label>
+            <input
+              type="datetime-local"
+              value={pickupTime}
+              onChange={(e) => setPickupTime(e.target.value)}
+              required
+            />
           </div>
           
           <button onClick={handleOrder} className="button button-success">Place Order</button>

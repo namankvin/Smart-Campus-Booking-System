@@ -26,7 +26,7 @@ export const authService = {
 
 export const bookingService = {
   createClassroomBooking: (data) => api.post('/bookings/classroom', data),
-  getFoodOrders: () => api.get('/bookings'),
+  getUserBookings: () => api.get('/bookings'),
   cancelBooking: (id) => api.delete(`/bookings/${id}`),
   placeFoodOrder: (data) => api.post('/bookings/food', data),
   bookCab: (data) => api.post('/bookings/cab', data)
@@ -55,8 +55,11 @@ export const adminService = {
   approveBooking: (id) => api.post(`/admin/bookings/${id}/approve`),
   rejectBooking: (id) => api.post(`/admin/bookings/${id}/reject`),
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
+  getVendorOrders: (vendor) => api.get('/admin/vendor/orders', { params: { vendor } }),
   generateReports: (params) => api.get('/admin/reports', { params }),
-  getClassrooms: () => api.get('/admin/classrooms')
+  getClassrooms: () => api.get('/admin/classrooms'),
+  getUsers: () => api.get('/admin/users'),
+  updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role })
 };
 
 export default api;

@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './services/authContext';
 import Login from './pages/Login';
 import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import VendorDashboard from './pages/VendorDashboard';
+import CabOperatorDashboard from './pages/CabOperatorDashboard';
 
 const ProtectedRoute = ({ user, children, requiredRole }) => {
   if (!user) {
@@ -32,6 +34,14 @@ const AppContent = () => {
     setLoggedInUser(user);
   };
 
+  const renderDashboard = () => {
+    if (!loggedInUser) return <Navigate to="/login" />;
+    if (loggedInUser.role === 'Admin') return <AdminDashboard />;
+    if (loggedInUser.role === 'Vendor') return <VendorDashboard />;
+    if (loggedInUser.role === 'Cab Operator') return <CabOperatorDashboard />;
+    return <StudentDashboard />;
+  };
+
   return (
     <Routes>
       <Route path="/login" element={<Login onLogin={handleLogin} />} />
@@ -39,7 +49,7 @@ const AppContent = () => {
         path="/dashboard"
         element={
           <ProtectedRoute user={loggedInUser}>
-            {loggedInUser?.role === 'Admin' ? <AdminDashboard /> : <StudentDashboard />}
+            {renderDashboard()}
           </ProtectedRoute>
         }
       />

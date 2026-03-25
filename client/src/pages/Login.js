@@ -5,6 +5,7 @@ import { GoogleLogin } from '@react-oauth/google';
 const Login = ({ onLogin }) => {
   const { login } = useAuth();
   const [error, setError] = useState('');
+  const [role, setRole] = useState('Student');
 
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
@@ -22,7 +23,8 @@ const Login = ({ onLogin }) => {
         googleId: userData.sub,
         email: userData.email,
         name: userData.name,
-        profilePicture: userData.picture
+        profilePicture: userData.picture,
+        role
       });
       
       onLogin(response.user);
@@ -38,6 +40,17 @@ const Login = ({ onLogin }) => {
         <p>Welcome! Login with your institutional Google account to continue.</p>
         
         {error && <div className="alert alert-error">{error}</div>}
+
+        <div className="form-group" style={{ marginTop: '16px', textAlign: 'left' }}>
+          <label>Role (for development)</label>
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="Student">Student</option>
+            <option value="Faculty">Faculty</option>
+            <option value="Vendor">Vendor</option>
+            <option value="Cab Operator">Cab Operator</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
         
         <div style={{ marginTop: '20px' }}>
           <GoogleLogin

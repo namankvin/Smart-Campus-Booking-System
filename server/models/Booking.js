@@ -9,7 +9,25 @@ const bookingSchema = new mongoose.Schema({
   startTime: { type: String },
   endTime: { type: String },
   purpose: { type: String },
-  status: { type: String, enum: ['Pending', 'Approved', 'Rejected', 'Cancelled', 'Completed'], default: 'Pending' },
+  status: {
+    type: String,
+    enum: [
+      'Pending',
+      'Waitlisted',
+      'Approved',
+      'Rejected',
+      'Accepted',
+      'Preparing',
+      'Ready',
+      'Confirmed',
+      'Cancelled',
+      'Completed'
+    ],
+    default: 'Pending'
+  },
+  waitlistPosition: { type: Number, default: null },
+  isRecurring: { type: Boolean, default: false },
+  recurringGroupId: { type: String, default: null },
   // For food
   vendor: { type: String },
   items: [{

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../services/authContext';
 import { adminService } from '../services/api';
 
 const AdminDashboard = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   const [pendingBookings, setPendingBookings] = useState([]);
+  const [users, setUsers] = useState([]);
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,8 +23,11 @@ const AdminDashboard = () => {
         adminService.getPendingBookings(),
         adminService.generateReports({ startDate: new Date(Date.now() - 30*24*60*60*1000), endDate: new Date() })
       ]);
-      setP endingBookings(bookingsRes.data);
+
+      const usersRes = await adminService.getUsers();
+      setPendingBookings(bookingsRes.data);
       setReports(reportsRes.data);
+      setUsers(usersRes.data);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch admin data');
@@ -29,7 +38,7 @@ const AdminDashboard = () => {
   const handleApprove = async (id) => {
     try {
       await adminService.approveBooking(id);
-      setP endingBookings(pendingBookings.filter(b => b._id !== id));
+      setPendingBookings(pendingBookings.filter(b => b._id !== id));
     } catch (err) {
       setError('Failed to approve booking');
     }
@@ -38,17 +47,39 @@ const AdminDashboard = () => {
   const handleReject = async (id) => {
     try {
       await adminService.rejectBooking(id);
-      setP endingBookings(pendingBookings.filter(b => b._id !== id));
+      setPendingBookings(pendingBookings.filter(b => b._id !== id));
     } catch (err) {
       setError('Failed to reject booking');
     }
   };
 
+  const handleRoleChange = async (id, role) => {
+    try {
+      await adminService.updateUserRole(id, role);
+      setUsers(users.map((u) => (u._id === id ? { ...u, role } : u)));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update role');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   if (loading) return <div className="loading">Loading admin dashboard...</div>;
 
   return (
-    <div className="container">
-      <h1>Admin Dashboard</h1>
+    <div>
+      <nav className="navbar">
+        <h1>Admin Dashboard</h1>
+        <div className="navbar-menu">
+          <span>Welcome, {user?.name}</span>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+      </nav>
+
+      <div className="container">
       {error && <div className="alert alert-error">{error}</div>}
       
       <div className="dashboard">
@@ -96,6 +127,46 @@ const AdminDashboard = () => {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="card">
+        <h2>User Role Management</h2>
+        {users.length === 0 ? (
+          <p>No users found.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((u) => (
+                <tr key={u._id}>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                    >
+                      <option value="Student">Student</option>
+                      <option value="Faculty">Faculty</option>
+                      <option value="Vendor">Vendor</option>
+                      <option value="Cab Operator">Cab Operator</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                  </td>
+                  <td>Saved on select</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
       </div>
     </div>
   );
