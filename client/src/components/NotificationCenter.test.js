@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import NotificationCenter from './NotificationCenter';
 import { notificationService } from '../services/api';
 
@@ -56,7 +57,7 @@ describe('NotificationCenter', () => {
       expect(screen.getByText('Notifications (1)')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Notifications (1)'));
+    await userEvent.click(screen.getByText('Notifications (1)'));
     expect(screen.getByText('Welcome')).toBeInTheDocument();
     expect(screen.getByText('Hello')).toBeInTheDocument();
   });
@@ -66,8 +67,8 @@ describe('NotificationCenter', () => {
     render(<NotificationCenter />);
 
     await waitFor(() => expect(screen.getByText('Notifications (1)')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('Notifications (1)'));
-    fireEvent.click(screen.getByText('Mark all read'));
+    await userEvent.click(screen.getByText('Notifications (1)'));
+    await userEvent.click(screen.getByText('Mark all read'));
 
     await waitFor(() => {
       expect(notificationService.markAllRead).toHaveBeenCalledTimes(1);

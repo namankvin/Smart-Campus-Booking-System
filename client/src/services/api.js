@@ -20,6 +20,7 @@ api.interceptors.request.use((config) => {
 
 export const authService = {
   login: (credentials) => api.post('/auth/google-login', credentials),
+  devLogin: (payload) => api.post('/auth/dev-login', payload),
   getProfile: () => api.get('/auth/profile'),
   logout: () => api.post('/auth/logout')
 };

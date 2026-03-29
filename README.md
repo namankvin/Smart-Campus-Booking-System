@@ -108,17 +108,23 @@ npm run test:all
 
 ## Remaining Work
 
-- Frontend test warning cleanup:
-   - remove remaining React `act(...)` warnings in client tests
-- Expand test coverage:
-   - add integration tests for Google auth verification path (mocked token verification)
-   - add more UI tests for booking forms and role dashboards
-- Production hardening:
-   - disable development role selection at login in production
-   - enforce admin-only role assignment policy end-to-end
-- Developer tooling:
-   - add seed/reset scripts for classrooms, menus, cabs, and sample users
-   - add CI workflow to run `npm run test:all` and `npm run build`
+- No blocking implementation items remain from the previous backlog.
+- Current status:
+   - frontend tests no longer emit React `act(...)` warnings
+   - backend auth integration tests now cover mocked Google token verification paths
+   - UI tests now cover booking forms and key role dashboards
+   - development role selector is hidden in production login flow
+   - new user sign-in role is enforced as `Student`; role changes remain admin-only
+   - seed/reset scripts are available for classrooms, menus, cabs, and sample users
+   - CI workflow runs `npm run test:all` and `npm run build` on push and pull requests
+
+Developer scripts added:
+
+```bash
+npm run seed
+npm run reset:db
+npm run reset:db:seed
+```
 
 ## Deployment
 

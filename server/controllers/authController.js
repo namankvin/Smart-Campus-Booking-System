@@ -13,9 +13,15 @@ const logAuthAttempt = async ({ action, user, details }) => {
   }
 };
 
+const issueToken = (user) => jwt.sign(
+  { id: user._id, email: user.email, role: user.role },
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
+);
+
 const googleLogin = async (req, res) => {
   try {
-    const { credential, role: requestedRole } = req.body;
+    const { credential } = req.body;
 
     if (!credential) {
       await logAuthAttempt({
@@ -48,7 +54,6 @@ const googleLogin = async (req, res) => {
     const name = payload.name || email;
     const profilePicture = payload.picture;
 
-    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
     const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
 
     if (institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
@@ -64,13 +69,12 @@ const googleLogin = async (req, res) => {
     let user = await User.findOne({ googleId });
     
     if (!user) {
-      const normalizedRole = allowedRoles.includes(requestedRole) ? requestedRole : 'Student';
       user = new User({
         googleId,
         email,
         name,
         profilePicture,
-        role: normalizedRole
+        role: 'Student'
       });
       await user.save();
     } else {
@@ -87,11 +91,7 @@ const googleLogin = async (req, res) => {
       }
     }
     
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
-    );
+    const token = issueToken(user);
 
     await logAuthAttempt({
       action: 'auth_login_success',
@@ -106,6 +106,52 @@ const googleLogin = async (req, res) => {
       details: { reason: 'verification_error', message: error.message }
     });
     res.status(500).json({ error: error.message });
+  }
+};
+
+const devLogin = async (req, res) => {
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Development login is disabled in production' });
+    }
+
+    const { email = 'dev.user@test.edu', name = 'Dev User', role = 'Student' } = req.body || {};
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+    const normalizedRole = allowedRoles.includes(role) ? role : 'Student';
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      return res.status(400).json({ error: 'Email is required for development login' });
+    }
+
+    let user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      const safeIdPart = normalizedEmail.replace(/[^a-z0-9]/g, '-');
+      user = await User.create({
+        googleId: `dev-${safeIdPart}`,
+        email: normalizedEmail,
+        name,
+        role: normalizedRole
+      });
+    } else {
+      if (user.role !== normalizedRole || user.name !== name) {
+        user.role = normalizedRole;
+        user.name = name;
+        await user.save();
+      }
+    }
+
+    const token = issueToken(user);
+
+    await logAuthAttempt({
+      action: 'auth_login_success',
+      user: user._id,
+      details: { email: user.email, role: user.role, method: 'dev_login' }
+    });
+
+    return res.json({ token, user });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -127,4 +173,4 @@ const logout = (req, res) => {
   res.json({ message: 'Logged out successfully' });
 };
 
-module.exports = { googleLogin, getProfile, logout };
+module.exports = { googleLogin, devLogin, getProfile, logout };

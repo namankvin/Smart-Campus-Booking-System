@@ -1,15 +1,14 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 
+const mockAuthState = {
+  user: null,
+  token: null
+};
+
 jest.mock('./services/authContext', () => ({
   AuthProvider: ({ children }) => <>{children}</>,
-  useAuth: () => {
-    const storedUser = global.localStorage.getItem('user');
-    return {
-      user: storedUser ? JSON.parse(storedUser) : null,
-      token: global.localStorage.getItem('token')
-    };
-  }
+  useAuth: () => mockAuthState
 }));
 
 import App from './App';
@@ -23,6 +22,9 @@ jest.mock('./pages/CabOperatorDashboard', () => () => <div>Cab Dashboard Mock</d
 describe('App role routing', () => {
   beforeEach(() => {
     localStorage.clear();
+    window.history.pushState({}, '', '/');
+    mockAuthState.user = null;
+    mockAuthState.token = null;
   });
 
   it('redirects to login when no user is stored', async () => {
@@ -33,8 +35,8 @@ describe('App role routing', () => {
   });
 
   it('renders admin dashboard for admin role', async () => {
-    localStorage.setItem('token', 'fake-token');
-    localStorage.setItem('user', JSON.stringify({ name: 'Admin', role: 'Admin' }));
+    mockAuthState.token = 'fake-token';
+    mockAuthState.user = { name: 'Admin', role: 'Admin', email: 'admin@test.edu' };
 
     render(<App />);
 
@@ -44,8 +46,8 @@ describe('App role routing', () => {
   });
 
   it('renders vendor dashboard for vendor role', async () => {
-    localStorage.setItem('token', 'fake-token');
-    localStorage.setItem('user', JSON.stringify({ name: 'Vendor', role: 'Vendor' }));
+    mockAuthState.token = 'fake-token';
+    mockAuthState.user = { name: 'Vendor', role: 'Vendor', email: 'vendor@test.edu' };
 
     render(<App />);
 

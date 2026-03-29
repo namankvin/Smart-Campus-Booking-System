@@ -9,7 +9,10 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await authService.login(credentials);
+      const isDevLogin = credentials?.mode === 'dev';
+      const response = isDevLogin
+        ? await authService.devLogin(credentials)
+        : await authService.login(credentials);
       setToken(response.data.token);
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);

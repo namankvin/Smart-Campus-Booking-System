@@ -48,4 +48,16 @@ describe('Admin API', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
+  it('blocks non-admin from updating user roles', async () => {
+    const { app } = createAppServer();
+    const { token } = await createUserAndToken({ role: 'Student', email: 'student@test.edu' });
+    const { user: targetUser } = await createUserAndToken({ role: 'Student', email: 'target@test.edu' });
+
+    await request(app)
+      .put(`/api/admin/users/${targetUser._id}/role`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ role: 'Vendor' })
+      .expect(403);
+  });
 });

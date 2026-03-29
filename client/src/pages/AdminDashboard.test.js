@@ -1,0 +1,76 @@
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import AdminDashboard from './AdminDashboard';
+import { adminService } from '../services/api';
+
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate
+}));
+
+jest.mock('../services/authContext', () => ({
+  useAuth: () => ({
+    user: { name: 'Admin User', role: 'Admin' },
+    logout: jest.fn()
+  })
+}));
+
+jest.mock('../services/api', () => ({
+  adminService: {
+    getPendingBookings: jest.fn(),
+    generateReports: jest.fn(),
+    getUsers: jest.fn(),
+    approveBooking: jest.fn(),
+    rejectBooking: jest.fn(),
+    updateUserRole: jest.fn(),
+    getVendorOrders: jest.fn(),
+    updateOrderStatus: jest.fn()
+  }
+}));
+
+jest.mock('../components/NotificationCenter', () => () => <div>Notifications</div>);
+
+describe('AdminDashboard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    adminService.getPendingBookings.mockResolvedValue({
+      data: [
+        {
+          _id: 'booking-1',
+          user: { name: 'Student One' },
+          classroom: { name: 'A-301' },
+          date: new Date('2026-05-10T00:00:00.000Z').toISOString(),
+          startTime: '10:00',
+          endTime: '11:00',
+          purpose: 'Project work'
+        }
+      ]
+    });
+    adminService.generateReports.mockResolvedValue({
+      data: { totalBookings: 7, revenue: 1250 }
+    });
+    adminService.getUsers.mockResolvedValue({
+      data: [{ _id: 'user-1', name: 'Alice', email: 'alice@test.edu', role: 'Student' }]
+    });
+    adminService.updateUserRole.mockResolvedValue({ data: { _id: 'user-1', role: 'Vendor' } });
+  });
+
+  it('loads dashboard data and updates user role', async () => {
+    const { container } = render(<AdminDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pending Classroom Bookings (1)')).toBeInTheDocument();
+      expect(screen.getByText('Total Bookings:')).toBeInTheDocument();
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+    });
+
+    const roleSelect = container.querySelector('select');
+    await userEvent.selectOptions(roleSelect, 'Vendor');
+
+    await waitFor(() => {
+      expect(adminService.updateUserRole).toHaveBeenCalledWith('user-1', 'Vendor');
+    });
+  });
+});

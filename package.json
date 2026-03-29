@@ -14,7 +14,10 @@
     "test": "npm run test:server",
     "test:server": "jest --runInBand --detectOpenHandles --setupFilesAfterEnv ./server/tests/setup.js --testMatch '**/server/tests/**/*.test.js'",
     "test:client": "CI=true npm test --prefix client -- --watchAll=false",
-    "test:all": "npm run test:server && npm run test:client"
+    "test:all": "npm run test:server && npm run test:client",
+    "seed": "node server/scripts/seed.js",
+    "reset:db": "node server/scripts/reset.js",
+    "reset:db:seed": "node server/scripts/reset.js --with-seed"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

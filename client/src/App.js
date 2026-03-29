@@ -23,11 +23,32 @@ const AppContent = () => {
   const { user, token } = useAuth();
   const [loggedInUser, setLoggedInUser] = useState(user);
 
+  const hasSameIdentity = (left, right) => {
+    if (!left && !right) return true;
+    if (!left || !right) return false;
+
+    return (
+      left._id === right._id &&
+      left.email === right.email &&
+      left.role === right.role &&
+      left.name === right.name
+    );
+  };
+
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setLoggedInUser(JSON.parse(storedUser));
+    let storedUser = null;
+    const rawStoredUser = localStorage.getItem('user');
+
+    if (rawStoredUser) {
+      try {
+        storedUser = JSON.parse(rawStoredUser);
+      } catch (error) {
+        storedUser = null;
+      }
     }
+
+    const nextUser = user || storedUser || null;
+    setLoggedInUser((prevUser) => (hasSameIdentity(prevUser, nextUser) ? prevUser : nextUser));
   }, [user, token]);
 
   const handleLogin = (user) => {
@@ -44,7 +65,10 @@ const AppContent = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login onLogin={handleLogin} />} />
+      <Route
+        path="/login"
+        element={loggedInUser ? <Navigate to="/dashboard" replace /> : <Login onLogin={handleLogin} />}
+      />
       <Route
         path="/dashboard"
         element={
@@ -61,7 +85,7 @@ const AppContent = () => {
 const App = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppContent />
       </BrowserRouter>
     </AuthProvider>

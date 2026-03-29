@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from './authContext';
 import { authService } from './api';
 
@@ -47,7 +48,7 @@ describe('AuthContext', () => {
       </AuthProvider>
     );
 
-    fireEvent.click(screen.getByText('Login'));
+    await userEvent.click(screen.getByText('Login'));
 
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('Naman');
@@ -56,7 +57,7 @@ describe('AuthContext', () => {
 
     expect(localStorage.getItem('token')).toBe('jwt-token');
 
-    fireEvent.click(screen.getByText('Logout'));
+    await userEvent.click(screen.getByText('Logout'));
 
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('none');
