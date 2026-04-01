@@ -1,11 +1,36 @@
-import React, { useState, useContext, createContext } from 'react';
+import React, { useState, useContext, createContext, useEffect } from 'react';
 import { authService } from '../services/api';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem('user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const syncProfile = async () => {
+      if (!token) return;
+      if (user) return;
+      try {
+        const res = await authService.getProfile();
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
+      } catch {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    };
+    syncProfile();
+  }, [token, user]);
 
   const login = async (credentials) => {
     try {

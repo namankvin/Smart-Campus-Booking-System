@@ -16,18 +16,15 @@ const Login = ({ onLogin }) => {
     try {
       setError('');
       const loginPayload = {
-        credential: credentialResponse.credential
+        credential: credentialResponse.credential,
+        role
       };
-
-      if (isDevelopment) {
-        loginPayload.role = role;
-      }
 
       const response = await login(loginPayload);
       
       onLogin(response.user);
     } catch (err) {
-      setError(err?.error || err?.message || 'Login failed. Please try again.');
+      setError(err?.error || err?.message || 'Google login failed. Check if your email meets the requirements.');
     }
   };
 
@@ -37,8 +34,8 @@ const Login = ({ onLogin }) => {
       const response = await login({
         mode: 'dev',
         role,
-        email: `dev.${role.toLowerCase().replace(/\s+/g, '')}@test.edu`,
-        name: `Dev ${role}`
+        email: 'avi.verma2006@gmail.com',
+        name: `${role} User`
       });
 
       onLogin(response.user);
@@ -61,18 +58,19 @@ const Login = ({ onLogin }) => {
           </div>
         )}
 
-        {isDevelopment && (
-          <div className="form-group" style={{ marginTop: '16px', textAlign: 'left' }}>
-            <label>Role (for development)</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="Student">Student</option>
-              <option value="Faculty">Faculty</option>
-              <option value="Vendor">Vendor</option>
-              <option value="Cab Operator">Cab Operator</option>
-              <option value="Admin">Admin</option>
-            </select>
-          </div>
-        )}
+        <div className="form-group" style={{ marginTop: '16px', textAlign: 'left' }}>
+          <label>Role</label>
+          <select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="Student">Student</option>
+            <option value="Faculty">Faculty</option>
+            <option value="Vendor">Vendor</option>
+            <option value="Cab Operator">Cab Operator</option>
+            <option value="Admin">Admin</option>
+          </select>
+          <p style={{ fontSize: '12px', color: '#555', marginTop: '8px' }}>
+            Student requires <code>@student.nitw.ac.in</code>. Others accept any Gmail.
+          </p>
+        </div>
         
         <div style={{ marginTop: '20px' }}>
           {isGoogleConfigured ? (

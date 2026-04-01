@@ -53,20 +53,64 @@ const googleLogin = async (req, res) => {
     const email = payload.email;
     const name = payload.name || email;
     const profilePicture = payload.picture;
+    const requestRole = String(req.body.role || '').trim() || null;
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+
+    if (requestRole && !allowedRoles.includes(requestRole)) {
+      return res.status(400).json({ error: 'Invalid role provided' });
+    }
 
     const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
+    let user = await User.findOne({ googleId });
 
-    if (institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
+    // Determine role: priority request -> existing user -> inferred from email
+    let targetRole = requestRole || (user ? user.role : null);
+    if (!targetRole) {
+      if (institutionalDomain && email.endsWith(`@${institutionalDomain}`)) {
+        targetRole = 'Student';
+      } else {
+        targetRole = 'Student';
+      }
+    }
+
+    // If role is Student, enforce institutional email
+    if (targetRole === 'Student' && institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
       await logAuthAttempt({
         action: 'auth_login_failed',
-        details: { reason: 'non_institutional_email', email }
+        details: { reason: 'non_institutional_email', email, role: targetRole }
       });
       return res.status(403).json({
-        error: `Only institutional email accounts (@${institutionalDomain}) are allowed`
+        error: `Students must use institutional email accounts (@${institutionalDomain})`
       });
     }
-    
-    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      user = new User({
+        googleId,
+        email,
+        name,
+        profilePicture,
+        role: targetRole
+      });
+      await user.save();
+    } else {
+      // Update role only if provided explicitly and different
+      if (requestRole && user.role !== requestRole) {
+        user.role = requestRole;
+      }
+
+      const nextProfile = {
+        email,
+        name,
+        profilePicture: profilePicture || user.profilePicture
+      };
+      if (user.email !== nextProfile.email || user.name !== nextProfile.name || user.profilePicture !== nextProfile.profilePicture) {
+        user.email = nextProfile.email;
+        user.name = nextProfile.name;
+        user.profilePicture = nextProfile.profilePicture;
+      }
+      await user.save();
+    }
     
     if (!user) {
       user = new User({
@@ -151,9 +195,11 @@ const devLogin = async (req, res) => {
 
     return res.json({ token, user });
   } catch (error) {
+    console.error('Dev login error:', error);
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 const getProfile = async (req, res) => {
   try {

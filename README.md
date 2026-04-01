@@ -53,8 +53,15 @@ A comprehensive web application for booking campus resources including classroom
 ## Usage
 
 - Access the application at `http://localhost:3000`
-- Login with institutional Google account
-- Navigate based on your role (Student, Faculty, Vendor, Admin)
+- Quick Dev Login (best for presentations)
+  - Choose role from dropdown
+  - Click `Quick Dev Login` or `Sign in (Development)`
+  - Uses dev account `avi.verma2006@gmail.com` and sets the selected role
+- Google OAuth Login
+  - Click `Sign in with Google` (requires `REACT_APP_GOOGLE_CLIENT_ID`)
+  - For Student role, Google email must end with `@student.nitw.ac.in`
+  - For Faculty/Vendor/Cab Operator/Admin, any Gmail address is accepted
+- Navigate based on current role (Student, Faculty, Vendor, Cab Operator, Admin)
 
 ## Authentication Notes
 
