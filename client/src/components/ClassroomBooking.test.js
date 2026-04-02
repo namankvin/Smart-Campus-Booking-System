@@ -34,7 +34,7 @@ describe('ClassroomBooking', () => {
     render(<ClassroomBooking />);
 
     await waitFor(() => {
-      expect(screen.getByText('A-101 (Capacity: 60)')).toBeInTheDocument();
+      expect(screen.getByText('A-101 (Capacity: 60) - Available')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Recurrence')).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('ClassroomBooking', () => {
     render(<ClassroomBooking />);
 
     await waitFor(() => {
-      expect(screen.getByText('A-101 (Capacity: 60)')).toBeInTheDocument();
+      expect(screen.getByText('A-101 (Capacity: 60) - Available')).toBeInTheDocument();
     });
 
     await userEvent.selectOptions(document.querySelector('select[name="classroom"]'), 'classroom-1');

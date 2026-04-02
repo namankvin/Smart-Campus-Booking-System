@@ -19,6 +19,17 @@ const issueToken = (user) => jwt.sign(
   { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
 );
 
+const isInstitutionalEmail = (email, configuredDomain) => {
+  if (!email) return false;
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  if (configuredDomain) {
+    return normalizedEmail.endsWith(`@${String(configuredDomain).toLowerCase()}`);
+  }
+
+  return /@([a-z0-9-]+\.)+nitw\.ac\.in$/i.test(normalizedEmail);
+};
+
 const googleLogin = async (req, res) => {
   try {
     const { credential } = req.body;
@@ -58,14 +69,15 @@ const googleLogin = async (req, res) => {
 
     const targetRole = user?.role || 'Student';
 
-    // If role is Student, enforce institutional email
-    if (targetRole === 'Student' && institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
+    if (!isInstitutionalEmail(email, institutionalDomain)) {
       await logAuthAttempt({
         action: 'auth_login_failed',
-        details: { reason: 'non_institutional_email', email, role: targetRole }
+        details: { reason: 'non_institutional_email', email }
       });
       return res.status(403).json({
-        error: `Students must use institutional email accounts (@${institutionalDomain})`
+        error: institutionalDomain
+          ? `Use your institutional account ending with @${institutionalDomain}`
+          : 'Use your NITW institutional account ending with .nitw.ac.in'
       });
     }
 

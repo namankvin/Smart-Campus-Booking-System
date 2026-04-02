@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminDashboard from './AdminDashboard';
-import { adminService } from '../services/api';
+import { adminService, classroomService } from '../services/api';
 
 const mockNavigate = jest.fn();
 
@@ -22,11 +22,16 @@ jest.mock('../services/api', () => ({
     getPendingBookings: jest.fn(),
     generateReports: jest.fn(),
     getUsers: jest.fn(),
+    getClassrooms: jest.fn(),
     approveBooking: jest.fn(),
     rejectBooking: jest.fn(),
     updateUserRole: jest.fn(),
     getVendorOrders: jest.fn(),
     updateOrderStatus: jest.fn()
+  },
+  classroomService: {
+    create: jest.fn(),
+    update: jest.fn()
   }
 }));
 
@@ -54,7 +59,12 @@ describe('AdminDashboard', () => {
     adminService.getUsers.mockResolvedValue({
       data: [{ _id: 'user-1', name: 'Alice', email: 'alice@test.edu', role: 'Student' }]
     });
+    adminService.getClassrooms.mockResolvedValue({
+      data: [{ _id: 'classroom-1', name: 'LHC-101', capacity: 80, location: 'LHC Block A', isActive: true }]
+    });
     adminService.updateUserRole.mockResolvedValue({ data: { _id: 'user-1', role: 'Vendor' } });
+    classroomService.create.mockResolvedValue({ data: { _id: 'classroom-2', name: 'CSE-102' } });
+    classroomService.update.mockResolvedValue({ data: { _id: 'classroom-1', isActive: false } });
   });
 
   it('loads dashboard data and updates user role', async () => {

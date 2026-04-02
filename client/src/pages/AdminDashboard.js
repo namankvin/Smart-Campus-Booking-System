@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
-import { adminService } from '../services/api';
+import { adminService, classroomService } from '../services/api';
 import NotificationCenter from '../components/NotificationCenter';
 
 const AdminDashboard = () => {
@@ -11,26 +11,35 @@ const AdminDashboard = () => {
   const [pendingBookings, setPendingBookings] = useState([]);
   const [users, setUsers] = useState([]);
   const [reports, setReports] = useState(null);
+  const [classrooms, setClassrooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [classroomForm, setClassroomForm] = useState({
+    name: '',
+    capacity: '',
+    location: '',
+    amenities: ''
+  });
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError('');
 
-      const [bookingsRes, reportsRes, usersRes] = await Promise.all([
+      const [bookingsRes, reportsRes, usersRes, classroomsRes] = await Promise.all([
         adminService.getPendingBookings(),
         adminService.generateReports({
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           endDate: new Date()
         }),
-        adminService.getUsers()
+        adminService.getUsers(),
+        adminService.getClassrooms()
       ]);
 
       setPendingBookings(bookingsRes.data);
       setReports(reportsRes.data);
       setUsers(usersRes.data);
+      setClassrooms(classroomsRes.data || []);
     } catch (err) {
       setError('Failed to fetch admin data');
     } finally {
@@ -72,6 +81,46 @@ const AdminDashboard = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleCreateClassroom = async (event) => {
+    event.preventDefault();
+
+    if (!classroomForm.name || !classroomForm.capacity || !classroomForm.location) {
+      setError('Classroom name, capacity, and location are required');
+      return;
+    }
+
+    try {
+      setError('');
+      const payload = {
+        name: classroomForm.name,
+        capacity: Number(classroomForm.capacity),
+        location: classroomForm.location,
+        amenities: classroomForm.amenities
+          ? classroomForm.amenities.split(',').map((item) => item.trim()).filter(Boolean)
+          : []
+      };
+      const response = await classroomService.create(payload);
+      setClassrooms((current) => [response.data, ...current]);
+      setClassroomForm({ name: '', capacity: '', location: '', amenities: '' });
+    } catch (createError) {
+      setError(createError.response?.data?.error || 'Failed to create classroom');
+    }
+  };
+
+  const handleToggleClassroomAvailability = async (classroom) => {
+    try {
+      setError('');
+      const response = await classroomService.update(classroom._id, {
+        isActive: classroom.isActive === false
+      });
+      setClassrooms((current) =>
+        current.map((item) => (item._id === classroom._id ? response.data : item))
+      );
+    } catch (toggleError) {
+      setError(toggleError.response?.data?.error || 'Failed to update classroom availability');
+    }
   };
 
   if (loading) return <div className="loading">Loading admin dashboard...</div>;
@@ -203,6 +252,91 @@ const AdminDashboard = () => {
                       </select>
                     </td>
                     <td>Saved on select</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="card">
+          <h2>Classroom Management</h2>
+          <form onSubmit={handleCreateClassroom}>
+            <div className="surface-grid">
+              <div className="form-group">
+                <label>Classroom Name</label>
+                <input
+                  type="text"
+                  value={classroomForm.name}
+                  onChange={(e) => setClassroomForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. LHC-202"
+                />
+              </div>
+              <div className="form-group">
+                <label>Capacity</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={classroomForm.capacity}
+                  onChange={(e) => setClassroomForm((prev) => ({ ...prev, capacity: e.target.value }))}
+                  placeholder="e.g. 80"
+                />
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <input
+                  type="text"
+                  value={classroomForm.location}
+                  onChange={(e) => setClassroomForm((prev) => ({ ...prev, location: e.target.value }))}
+                  placeholder="e.g. LHC Block B"
+                />
+              </div>
+              <div className="form-group">
+                <label>Amenities (comma separated)</label>
+                <input
+                  type="text"
+                  value={classroomForm.amenities}
+                  onChange={(e) => setClassroomForm((prev) => ({ ...prev, amenities: e.target.value }))}
+                  placeholder="Projector, Smart Board"
+                />
+              </div>
+            </div>
+            <button type="submit" className="button button-success">Add Classroom</button>
+          </form>
+
+          {classrooms.length === 0 ? (
+            <p style={{ marginTop: '16px' }}>No classrooms found.</p>
+          ) : (
+            <table className="table" style={{ marginTop: '16px' }}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Capacity</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {classrooms.map((classroom) => (
+                  <tr key={classroom._id}>
+                    <td>{classroom.name}</td>
+                    <td>{classroom.capacity}</td>
+                    <td>{classroom.location}</td>
+                    <td>
+                      <span className={classroom.isActive === false ? 'status-offline' : 'status-online'}>
+                        {classroom.isActive === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className="button button-ghost"
+                        onClick={() => handleToggleClassroomAvailability(classroom)}
+                        type="button"
+                      >
+                        {classroom.isActive === false ? 'Mark Active' : 'Mark Inactive'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

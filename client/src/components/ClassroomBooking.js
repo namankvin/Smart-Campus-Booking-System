@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService, classroomService } from '../services/api';
 import { useAuth } from '../services/authContext';
+import { demoClassrooms } from '../data/demoData';
 
 const ClassroomBooking = ({ onSuccess }) => {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ const ClassroomBooking = ({ onSuccess }) => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usingDemoClassrooms, setUsingDemoClassrooms] = useState(false);
 
   useEffect(() => {
     fetchClassrooms();
@@ -27,9 +29,18 @@ const ClassroomBooking = ({ onSuccess }) => {
   const fetchClassrooms = async () => {
     try {
       const response = await classroomService.getAll();
-      setClassrooms(response.data);
+      const items = Array.isArray(response.data) ? response.data : [];
+      if (items.length > 0) {
+        setClassrooms(items);
+        setUsingDemoClassrooms(false);
+      } else {
+        setClassrooms(demoClassrooms);
+        setUsingDemoClassrooms(true);
+      }
     } catch (err) {
-      setError('Failed to fetch classrooms');
+      setClassrooms(demoClassrooms);
+      setUsingDemoClassrooms(true);
+      setError('Live classroom list is unavailable. Showing demo classroom availability.');
     }
   };
 
@@ -46,6 +57,15 @@ const ClassroomBooking = ({ onSuccess }) => {
 
     if (formData.startTime >= formData.endTime) {
       setError('End time must be after start time');
+      return;
+    }
+
+    const selectedClassroom = classrooms.find((item) => item._id === formData.classroom);
+
+    if (selectedClassroom?.isDemo) {
+      setSuccess('Demo classroom selected. Availability preview is enabled for UI demonstration.');
+      setError('');
+      if (onSuccess) onSuccess();
       return;
     }
 
@@ -85,6 +105,24 @@ const ClassroomBooking = ({ onSuccess }) => {
       <h2>Book Classroom</h2>
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+      {usingDemoClassrooms && (
+        <div className="alert alert-warning">Showing sample classrooms because live data is empty.</div>
+      )}
+
+      {classrooms.length > 0 && (
+        <div className="surface-grid" style={{ marginBottom: '16px' }}>
+          {classrooms.map((item) => (
+            <div key={`${item._id}-availability`} className="metric-card">
+              <strong>{item.name}</strong>
+              <div>{item.location || 'Campus Block'}</div>
+              <div>Capacity: {item.capacity}</div>
+              <div className={item.isActive === false ? 'status-offline' : 'status-online'}>
+                {item.isActive === false ? 'Not Available' : 'Available'}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
@@ -92,7 +130,9 @@ const ClassroomBooking = ({ onSuccess }) => {
           <select name="classroom" value={formData.classroom} onChange={handleChange} required>
             <option value="">Select a classroom</option>
             {classrooms.map(c => (
-              <option key={c._id} value={c._id}>{c.name} (Capacity: {c.capacity})</option>
+              <option key={c._id} value={c._id}>
+                {c.name} (Capacity: {c.capacity}) - {c.isActive === false ? 'Not Available' : 'Available'}
+              </option>
             ))}
           </select>
         </div>

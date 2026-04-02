@@ -610,6 +610,30 @@ a {
   margin-bottom: 4px;
 }
 
+.status-online,
+.status-offline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.status-online {
+  color: #bfffe0;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.14);
+}
+
+.status-offline {
+  color: #ffd4db;
+  border: 1px solid rgba(251, 113, 133, 0.35);
+  background: rgba(251, 113, 133, 0.14);
+}
+
 @media (max-width: 960px) {
   .auth-shell {
     grid-template-columns: 1fr;

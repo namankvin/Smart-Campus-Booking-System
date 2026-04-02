@@ -94,14 +94,14 @@ const Login = ({ onLogin }) => {
         </div>
 
         <p className="auth-copy">
-          Pick your role, then use Google if it is configured or the development path if you are running locally.
+          Pick your role, then sign in with your NIT Warangal Google account. Development mode is still available for local testing.
         </p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         {!isGoogleConfigured && (
           <div className="alert alert-warning">
-            Google OAuth is not configured. Local development login is available instead.
+            Google OAuth is not configured. Configure it to allow NITW account login, or use local development login.
           </div>
         )}
 
@@ -115,7 +115,7 @@ const Login = ({ onLogin }) => {
             ))}
           </select>
           <p className="helper-text">
-            Students should use institutional Google accounts. Other roles can use the role-based demo path in development.
+            Production login accepts only institutional Google emails ending with .nitw.ac.in.
           </p>
         </div>
 

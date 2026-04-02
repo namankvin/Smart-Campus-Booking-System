@@ -7,8 +7,13 @@ import { bookingService } from '../services/api';
 jest.mock('../services/api', () => ({
   bookingService: {
     bookCab: jest.fn()
+  },
+  cabService: {
+    getAvailable: jest.fn()
   }
 }));
+
+const { cabService } = require('../services/api');
 
 const formatDatetimeLocal = (date) => {
   const pad = (value) => String(value).padStart(2, '0');
@@ -18,10 +23,17 @@ const formatDatetimeLocal = (date) => {
 describe('CabBooking', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    cabService.getAvailable.mockResolvedValue({
+      data: [{ _id: 'cab-1', id: 'NITW-EV-01', capacity: 4, currentLocation: 'Main Gate', isAvailable: true }]
+    });
   });
 
   it('validates that booking cannot be more than 6 hours ahead', async () => {
     render(<CabBooking />);
+
+    await waitFor(() => {
+      expect(cabService.getAvailable).toHaveBeenCalled();
+    });
 
     const pickupInput = document.querySelector('input[name="pickupLocation"]');
     const dropInput = document.querySelector('input[name="dropLocation"]');
@@ -45,6 +57,10 @@ describe('CabBooking', () => {
     bookingService.bookCab.mockResolvedValue({ data: { message: 'ok' } });
 
     render(<CabBooking onSuccess={onSuccess} />);
+
+    await waitFor(() => {
+      expect(cabService.getAvailable).toHaveBeenCalled();
+    });
 
     const pickupInput = document.querySelector('input[name="pickupLocation"]');
     const dropInput = document.querySelector('input[name="dropLocation"]');
