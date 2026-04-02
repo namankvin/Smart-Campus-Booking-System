@@ -53,25 +53,10 @@ const googleLogin = async (req, res) => {
     const email = payload.email;
     const name = payload.name || email;
     const profilePicture = payload.picture;
-    const requestRole = String(req.body.role || '').trim() || null;
-    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
-
-    if (requestRole && !allowedRoles.includes(requestRole)) {
-      return res.status(400).json({ error: 'Invalid role provided' });
-    }
-
     const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
     let user = await User.findOne({ googleId });
 
-    // Determine role: priority request -> existing user -> inferred from email
-    let targetRole = requestRole || (user ? user.role : null);
-    if (!targetRole) {
-      if (institutionalDomain && email.endsWith(`@${institutionalDomain}`)) {
-        targetRole = 'Student';
-      } else {
-        targetRole = 'Student';
-      }
-    }
+    const targetRole = user?.role || 'Student';
 
     // If role is Student, enforce institutional email
     if (targetRole === 'Student' && institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
@@ -94,11 +79,6 @@ const googleLogin = async (req, res) => {
       });
       await user.save();
     } else {
-      // Update role only if provided explicitly and different
-      if (requestRole && user.role !== requestRole) {
-        user.role = requestRole;
-      }
-
       const nextProfile = {
         email,
         name,
@@ -110,29 +90,6 @@ const googleLogin = async (req, res) => {
         user.profilePicture = nextProfile.profilePicture;
       }
       await user.save();
-    }
-    
-    if (!user) {
-      user = new User({
-        googleId,
-        email,
-        name,
-        profilePicture,
-        role: 'Student'
-      });
-      await user.save();
-    } else {
-      const nextProfile = {
-        email,
-        name,
-        profilePicture: profilePicture || user.profilePicture
-      };
-      if (user.email !== nextProfile.email || user.name !== nextProfile.name || user.profilePicture !== nextProfile.profilePicture) {
-        user.email = nextProfile.email;
-        user.name = nextProfile.name;
-        user.profilePicture = nextProfile.profilePicture;
-        await user.save();
-      }
     }
     
     const token = issueToken(user);

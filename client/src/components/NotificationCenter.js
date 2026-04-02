@@ -18,9 +18,16 @@ const NotificationCenter = () => {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return undefined;
+    }
+
     fetchNotifications();
 
-    const token = localStorage.getItem('token');
     const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
     const socket = io(socketUrl, {
       auth: {

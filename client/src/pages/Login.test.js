@@ -45,7 +45,7 @@ describe('Login', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Mock Google Login' }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith({ credential: 'google-token' });
+      expect(mockLogin).toHaveBeenCalledWith({ credential: 'google-token', role: 'Student' });
       expect(onLogin).toHaveBeenCalledWith({ name: 'Test User', role: 'Student' });
     });
   });
