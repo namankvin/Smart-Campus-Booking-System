@@ -19,6 +19,17 @@ const issueToken = (user) => jwt.sign(
   { expiresIn: process.env.JWT_EXPIRES_IN || '12h' }
 );
 
+const isInstitutionalEmail = (email, configuredDomain) => {
+  if (!email) return false;
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  if (configuredDomain) {
+    return normalizedEmail.endsWith(`@${String(configuredDomain).toLowerCase()}`);
+  }
+
+  return /@([a-z0-9-]+\.)+nitw\.ac\.in$/i.test(normalizedEmail);
+};
+
 const googleLogin = async (req, res) => {
   try {
     const { credential } = req.body;
@@ -53,34 +64,20 @@ const googleLogin = async (req, res) => {
     const email = payload.email;
     const name = payload.name || email;
     const profilePicture = payload.picture;
-    const requestRole = String(req.body.role || '').trim() || null;
-    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
-
-    if (requestRole && !allowedRoles.includes(requestRole)) {
-      return res.status(400).json({ error: 'Invalid role provided' });
-    }
-
     const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
     let user = await User.findOne({ googleId });
 
-    // Determine role: priority request -> existing user -> inferred from email
-    let targetRole = requestRole || (user ? user.role : null);
-    if (!targetRole) {
-      if (institutionalDomain && email.endsWith(`@${institutionalDomain}`)) {
-        targetRole = 'Student';
-      } else {
-        targetRole = 'Student';
-      }
-    }
+    const targetRole = user?.role || 'Student';
 
-    // If role is Student, enforce institutional email
-    if (targetRole === 'Student' && institutionalDomain && !email.endsWith(`@${institutionalDomain}`)) {
+    if (!isInstitutionalEmail(email, institutionalDomain)) {
       await logAuthAttempt({
         action: 'auth_login_failed',
-        details: { reason: 'non_institutional_email', email, role: targetRole }
+        details: { reason: 'non_institutional_email', email }
       });
       return res.status(403).json({
-        error: `Students must use institutional email accounts (@${institutionalDomain})`
+        error: institutionalDomain
+          ? `Use your institutional account ending with @${institutionalDomain}`
+          : 'Use your NITW institutional account ending with .nitw.ac.in'
       });
     }
 
@@ -94,11 +91,6 @@ const googleLogin = async (req, res) => {
       });
       await user.save();
     } else {
-      // Update role only if provided explicitly and different
-      if (requestRole && user.role !== requestRole) {
-        user.role = requestRole;
-      }
-
       const nextProfile = {
         email,
         name,
@@ -110,29 +102,6 @@ const googleLogin = async (req, res) => {
         user.profilePicture = nextProfile.profilePicture;
       }
       await user.save();
-    }
-    
-    if (!user) {
-      user = new User({
-        googleId,
-        email,
-        name,
-        profilePicture,
-        role: 'Student'
-      });
-      await user.save();
-    } else {
-      const nextProfile = {
-        email,
-        name,
-        profilePicture: profilePicture || user.profilePicture
-      };
-      if (user.email !== nextProfile.email || user.name !== nextProfile.name || user.profilePicture !== nextProfile.profilePicture) {
-        user.email = nextProfile.email;
-        user.name = nextProfile.name;
-        user.profilePicture = nextProfile.profilePicture;
-        await user.save();
-      }
     }
     
     const token = issueToken(user);

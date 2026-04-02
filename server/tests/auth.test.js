@@ -23,7 +23,7 @@ describe('Auth API', () => {
     mockVerifyIdToken.mockResolvedValue({
       getPayload: () => ({
         sub: 'google-sub-1',
-        email: 'new.user@test.edu',
+        email: 'new.user@student.nitw.ac.in',
         name: 'New User',
         picture: 'https://example.com/photo.png'
       })
@@ -41,7 +41,7 @@ describe('Auth API', () => {
       audience: 'test-google-client-id'
     });
     expect(res.body.user).toMatchObject({
-      email: 'new.user@test.edu',
+      email: 'new.user@student.nitw.ac.in',
       name: 'New User',
       role: 'Student'
     });
@@ -84,6 +84,25 @@ describe('Auth API', () => {
       .expect(403);
 
     expect(res.body.error).toContain('@test.edu');
+  });
+
+  it('returns 403 for non-NITW email when domain override is not configured', async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-sub-4',
+        email: 'user@gmail.com',
+        name: 'External User'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'non-nitw-token' })
+      .expect(403);
+
+    expect(res.body.error).toContain('.nitw.ac.in');
   });
 
   it('allows quick development login in non-production mode', async () => {

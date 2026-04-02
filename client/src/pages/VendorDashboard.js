@@ -17,6 +17,9 @@ const VendorDashboard = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const menuTotal = items.length;
+  const activeOrders = orders.filter((order) => ['Accepted', 'Preparing', 'Ready'].includes(order.status)).length;
+
   const fetchMenu = async () => {
     try {
       const res = await menuService.getByVendor(vendorName, menuDate);
@@ -120,6 +123,28 @@ const VendorDashboard = () => {
       </nav>
 
       <div className="container">
+        <div className="page-intro">
+          <div className="section-kicker">Vendor operations</div>
+          <h2>Manage your outlet menu and active orders from a single workspace.</h2>
+          <p>
+            Keep the menu current, toggle availability, and advance order status as kitchen prep moves forward.
+          </p>
+          <div className="metric-row" style={{ marginTop: '18px' }}>
+            <div className="metric-card">
+              <strong>{menuTotal}</strong>
+              <span>Menu items</span>
+            </div>
+            <div className="metric-card">
+              <strong>{activeOrders}</strong>
+              <span>Active orders</span>
+            </div>
+            <div className="metric-card">
+              <strong>{menuDate}</strong>
+              <span>Selected menu date</span>
+            </div>
+          </div>
+        </div>
+
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 

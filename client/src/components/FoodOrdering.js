@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService, menuService } from '../services/api';
+import { demoVendorMenus } from '../data/demoData';
 
 const FoodOrdering = ({ onSuccess }) => {
   const [menus, setMenus] = useState([]);
@@ -9,16 +10,27 @@ const FoodOrdering = ({ onSuccess }) => {
   const [pickupTime, setPickupTime] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usingDemoMenu, setUsingDemoMenu] = useState(false);
 
-  const vendors = ['Taaza Tiffins', 'Domino\'s'];
+  const vendors = Object.keys(demoVendorMenus);
 
   useEffect(() => {
     const loadMenu = async () => {
       try {
+        setError('');
         const response = await menuService.getByVendor(selectedVendor, date);
-        setMenus(response.data.items || []);
+        const apiItems = response?.data?.items || [];
+        if (apiItems.length > 0) {
+          setMenus(apiItems);
+          setUsingDemoMenu(false);
+        } else {
+          setMenus(demoVendorMenus[selectedVendor] || []);
+          setUsingDemoMenu(true);
+        }
       } catch (err) {
-        setError('Failed to fetch menu');
+        setMenus(demoVendorMenus[selectedVendor] || []);
+        setUsingDemoMenu(true);
+        setError('Live menu is unavailable. Showing sample items.');
       }
     };
 
@@ -73,6 +85,9 @@ const FoodOrdering = ({ onSuccess }) => {
       <h2>Order Food</h2>
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
+      {usingDemoMenu && selectedVendor && (
+        <div className="alert alert-warning">Showing demo menu items for {selectedVendor}.</div>
+      )}
       
       <div className="form-group">
         <label>Vendor</label>
@@ -90,13 +105,31 @@ const FoodOrdering = ({ onSuccess }) => {
       {selectedVendor && (
         <>
           <h3>Menu Items</h3>
-          {menus.map(item => (
-            <div key={item.name} style={{ padding: '10px', border: '1px solid #ddd', marginBottom: '10px' }}>
-              <div><strong>{item.name}</strong> - ${item.price}</div>
-              <small>{item.description}</small>
-              <button onClick={() => addToCart(item)} className="button" style={{ marginTop: '5px' }}>Add to Cart</button>
-            </div>
-          ))}
+          {menus.length === 0 ? (
+            <p>No menu items found for this restaurant and date.</p>
+          ) : (
+            menus.map((item) => (
+              <div key={item.name} className="metric-card" style={{ marginBottom: '10px' }}>
+                <div><strong>{item.name}</strong> - ${item.price}</div>
+                <small>{item.description || 'Freshly prepared item'}</small>
+                <div style={{ marginTop: '6px', color: '#9fb0ca' }}>
+                  Category: {item.category || 'General'}
+                  {item.prepTimeMins ? ` | Prep Time: ${item.prepTimeMins} mins` : ''}
+                </div>
+                <div className={item.isAvailable === false ? 'status-offline' : 'status-online'} style={{ marginTop: '6px' }}>
+                  {item.isAvailable === false ? 'Currently Unavailable' : 'Available'}
+                </div>
+                <button
+                  onClick={() => addToCart(item)}
+                  className="button"
+                  style={{ marginTop: '8px' }}
+                  disabled={item.isAvailable === false}
+                >
+                  Add to Cart
+                </button>
+              </div>
+            ))
+          )}
         </>
       )}
 
@@ -104,7 +137,7 @@ const FoodOrdering = ({ onSuccess }) => {
         <>
           <h3>Cart</h3>
           {cart.map(item => (
-            <div key={item.name} style={{ padding: '10px', background: '#f0f0f0', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
+            <div key={item.name} style={{ padding: '10px', background: 'rgba(255,255,255,0.08)', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
               <span>{item.name} x {item.quantity} = ${item.price * item.quantity}</span>
               <button onClick={() => removeFromCart(item.name)} className="button button-danger">Remove</button>
             </div>

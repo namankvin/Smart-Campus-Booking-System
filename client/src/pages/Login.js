@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../services/authContext';
 import { GoogleLogin } from '@react-oauth/google';
+import { FiArrowRight, FiShield, FiUsers, FiZap } from 'react-icons/fi';
 
 const Login = ({ onLogin }) => {
   const { login } = useAuth();
@@ -12,6 +13,22 @@ const Login = ({ onLogin }) => {
     googleClientId && !googleClientId.includes('your_google_client_id_here')
   );
 
+  const roleOptions = [
+    { value: 'Student', label: 'Student' },
+    { value: 'Faculty', label: 'Faculty' },
+    { value: 'Vendor', label: 'Vendor' },
+    { value: 'Cab Operator', label: 'Cab Operator' },
+    { value: 'Admin', label: 'Admin' }
+  ];
+
+  const demoIdentityByRole = {
+    Student: 'student.demo@smartcampus.local',
+    Faculty: 'faculty.demo@smartcampus.local',
+    Vendor: 'vendor.demo@smartcampus.local',
+    'Cab Operator': 'cab.demo@smartcampus.local',
+    Admin: 'admin.demo@smartcampus.local'
+  };
+
   const handleGoogleSuccess = async (credentialResponse) => {
     try {
       setError('');
@@ -21,8 +38,10 @@ const Login = ({ onLogin }) => {
       };
 
       const response = await login(loginPayload);
-      
-      onLogin(response.user);
+
+      if (typeof onLogin === 'function') {
+        onLogin(response.user);
+      }
     } catch (err) {
       setError(err?.error || err?.message || 'Google login failed. Check if your email meets the requirements.');
     }
@@ -34,62 +53,96 @@ const Login = ({ onLogin }) => {
       const response = await login({
         mode: 'dev',
         role,
-        email: 'avi.verma2006@gmail.com',
-        name: `${role} User`
+        email: demoIdentityByRole[role] || 'student.demo@smartcampus.local',
+        name: `${role} Demo`
       });
 
-      onLogin(response.user);
+      if (typeof onLogin === 'function') {
+        onLogin(response.user);
+      }
     } catch (err) {
       setError(err?.error || err?.message || 'Development login failed');
     }
   };
 
   return (
-    <div className="container" style={{ textAlign: 'center', marginTop: '50px' }}>
-      <div className="card" style={{ maxWidth: '400px', margin: '0 auto' }}>
-        <h1>Smart Campus Booking System</h1>
-        <p>Welcome! Login with your institutional Google account to continue.</p>
-        
+    <div className="auth-shell">
+      <div className="auth-hero">
+        <div className="auth-eyebrow">
+          <FiShield />
+          <span>Smart campus operations</span>
+        </div>
+        <h1>One place for rooms, rides, meals, and approvals.</h1>
+        <p>
+          A cleaner way for students, faculty, vendors, cab operators, and admins to manage daily campus logistics without friction.
+        </p>
+
+        <div className="feature-grid">
+          <div className="feature-chip"><FiUsers /> Role-based dashboards</div>
+          <div className="feature-chip"><FiZap /> Fast booking flows</div>
+          <div className="feature-chip"><FiShield /> Secure session handling</div>
+        </div>
+      </div>
+
+      <div className="auth-card">
+        <div className="card-header">
+          <div>
+            <div className="section-kicker">Sign in</div>
+            <h2>Continue to your dashboard</h2>
+          </div>
+          <div className="status-pill">Live</div>
+        </div>
+
+        <p className="auth-copy">
+          Pick your role, then sign in with your NIT Warangal Google account. Development mode is still available for local testing.
+        </p>
+
         {error && <div className="alert alert-error">{error}</div>}
 
         {!isGoogleConfigured && (
-          <div className="alert alert-error" style={{ marginTop: '12px' }}>
-            Google OAuth is not configured. Set a valid REACT_APP_GOOGLE_CLIENT_ID in client/.env.
+          <div className="alert alert-warning">
+            Google OAuth is not configured. Configure it to allow NITW account login, or use local development login.
           </div>
         )}
 
-        <div className="form-group" style={{ marginTop: '16px', textAlign: 'left' }}>
-          <label>Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="Student">Student</option>
-            <option value="Faculty">Faculty</option>
-            <option value="Vendor">Vendor</option>
-            <option value="Cab Operator">Cab Operator</option>
-            <option value="Admin">Admin</option>
+        <div className="form-group">
+          <label htmlFor="role">Role</label>
+          <select id="role" value={role} onChange={(e) => setRole(e.target.value)}>
+            {roleOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
-          <p style={{ fontSize: '12px', color: '#555', marginTop: '8px' }}>
-            Student requires <code>@student.nitw.ac.in</code>. Others accept any Gmail.
+          <p className="helper-text">
+            Production login accepts only institutional Google emails ending with .nitw.ac.in.
           </p>
         </div>
-        
-        <div style={{ marginTop: '20px' }}>
+
+        <div className="auth-actions">
           {isGoogleConfigured ? (
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={() => setError('Google sign-in failed. Check OAuth client configuration.')}
-            />
+            <div className="google-login-wrap">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={() => setError('Google sign-in failed. Check OAuth client configuration.')}
+              />
+            </div>
           ) : isDevelopment ? (
-            <button className="button button-success" onClick={handleDevLogin}>Sign in (Development)</button>
+            <button className="button button-success button-wide" onClick={handleDevLogin}>
+              Continue in development <FiArrowRight />
+            </button>
           ) : (
-            <button className="button" disabled>Sign in with Google</button>
+            <button className="button button-wide" disabled>
+              Google sign-in unavailable
+            </button>
+          )}
+
+          {isDevelopment && (
+            <button className="button button-ghost button-wide" onClick={handleDevLogin}>
+              Use demo session <FiArrowRight />
+            </button>
           )}
         </div>
-
-        {isDevelopment && (
-          <div style={{ marginTop: '12px' }}>
-            <button className="button button-success" onClick={handleDevLogin}>Quick Dev Login</button>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -30,21 +30,31 @@ A comprehensive web application for booking campus resources including classroom
    npm install
    npm run install-client
    ```
-3. Create a `.env` file in the root directory with the following variables:
+3. Create environment files:
+
+   Root server env (`.env`):
    ```
    MONGO_URI=your_mongodb_connection_string
    GOOGLE_CLIENT_ID=your_google_client_id
    GOOGLE_CLIENT_SECRET=your_google_client_secret
-   REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
    JWT_SECRET=your_jwt_secret
    JWT_EXPIRES_IN=12h
+   PORT=5000
+   CLIENT_URL=http://localhost:3000
    EMAIL_USER=your_email_for_notifications
    EMAIL_PASS=your_email_password
-   INSTITUTIONAL_EMAIL_DOMAIN=yourcollege.edu
-   FOOD_SLOT_CAPACITY=50
-   CAMPUS_LOCATIONS=Library,Main Gate,Hostel,Academic Block
+   # Optional: exact domain after @
+   # INSTITUTIONAL_EMAIL_DOMAIN=student.nitw.ac.in
+   ```
+
+   Client env (`client/.env`):
+   ```
+   REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id
+   REACT_APP_API_URL=http://localhost:5000/api
    REACT_APP_SOCKET_URL=http://localhost:5000
    ```
+
+   Example templates are provided in `.env.example` and `client/.env.example`.
 4. Start the development server:
    ```bash
    npm run dev
@@ -59,8 +69,8 @@ A comprehensive web application for booking campus resources including classroom
   - Uses predefined dev accounts and sets the selected role
 - Google OAuth Login
   - Click `Sign in with Google` (requires `REACT_APP_GOOGLE_CLIENT_ID`)
-  - For Student role, Google email must end with `@student.nitw.ac.in`
-  - For Faculty/Vendor/Cab Operator/Admin, any Gmail address is accepted
+   - Production Google login only allows institutional NITW accounts ending with `.nitw.ac.in`
+   - Optional override: set `INSTITUTIONAL_EMAIL_DOMAIN` for exact domain matching after `@`
 - Navigate based on current role (Student, Faculty, Vendor, Cab Operator, Admin)
 
 ## Authentication Notes

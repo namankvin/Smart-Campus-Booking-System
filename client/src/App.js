@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authContext';
 import Login from './pages/Login';
@@ -9,75 +9,54 @@ import CabOperatorDashboard from './pages/CabOperatorDashboard';
 
 const ProtectedRoute = ({ user, children, requiredRole }) => {
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
   
   if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/dashboard" replace />;
   }
   
   return children;
 };
 
 const AppContent = () => {
-  const { user, token } = useAuth();
-  const [loggedInUser, setLoggedInUser] = useState(user);
-
-  const hasSameIdentity = (left, right) => {
-    if (!left && !right) return true;
-    if (!left || !right) return false;
-
-    return (
-      left._id === right._id &&
-      left.email === right.email &&
-      left.role === right.role &&
-      left.name === right.name
-    );
-  };
-
-  useEffect(() => {
-    let storedUser = null;
-    const rawStoredUser = localStorage.getItem('user');
-
-    if (rawStoredUser) {
-      try {
-        storedUser = JSON.parse(rawStoredUser);
-      } catch (error) {
-        storedUser = null;
-      }
-    }
-
-    const nextUser = user || storedUser || null;
-    setLoggedInUser((prevUser) => (hasSameIdentity(prevUser, nextUser) ? prevUser : nextUser));
-  }, [user, token]);
-
-  const handleLogin = (user) => {
-    setLoggedInUser(user);
-  };
+  const { user, ready = true } = useAuth();
 
   const renderDashboard = () => {
-    if (!loggedInUser) return <Navigate to="/login" />;
-    if (loggedInUser.role === 'Admin') return <AdminDashboard />;
-    if (loggedInUser.role === 'Vendor') return <VendorDashboard />;
-    if (loggedInUser.role === 'Cab Operator') return <CabOperatorDashboard />;
+    if (!user) return <Navigate to="/login" replace />;
+    if (user.role === 'Admin') return <AdminDashboard />;
+    if (user.role === 'Vendor') return <VendorDashboard />;
+    if (user.role === 'Cab Operator') return <CabOperatorDashboard />;
     return <StudentDashboard />;
   };
+
+  if (!ready) {
+    return (
+      <div className="app-loading-shell">
+        <div className="loading-card">
+          <div className="loading-badge" />
+          <h1>Loading Smart Campus</h1>
+          <p>Checking your session and preparing the dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={loggedInUser ? <Navigate to="/dashboard" replace /> : <Login onLogin={handleLogin} />}
+        element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute user={loggedInUser}>
+          <ProtectedRoute user={user}>
             {renderDashboard()}
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to={loggedInUser ? '/dashboard' : '/login'} />} />
+      <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
     </Routes>
   );
 };

@@ -13,11 +13,29 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
+  const [ready, setReady] = useState(() => {
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (!storedToken) {
+      return true;
+    }
+
+    return Boolean(storedUser);
+  });
 
   useEffect(() => {
     const syncProfile = async () => {
-      if (!token) return;
-      if (user) return;
+      if (!token) {
+        setReady(true);
+        return;
+      }
+
+      if (user) {
+        setReady(true);
+        return;
+      }
+
       try {
         const res = await authService.getProfile();
         setUser(res.data);
@@ -27,6 +45,8 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+      } finally {
+        setReady(true);
       }
     };
     syncProfile();
@@ -42,6 +62,7 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      setReady(true);
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
@@ -51,12 +72,13 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
+    setReady(true);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, ready, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

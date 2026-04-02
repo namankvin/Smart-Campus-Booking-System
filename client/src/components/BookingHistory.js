@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService } from '../services/api';
+import { demoBookingHistory } from '../data/demoData';
 
 const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [usingDemoBookings, setUsingDemoBookings] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -13,10 +15,19 @@ const BookingHistory = () => {
   const fetchBookings = async () => {
     try {
       const response = await bookingService.getUserBookings();
-      setBookings(response.data);
-      setLoading(false);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      if (rows.length > 0) {
+        setBookings(rows);
+        setUsingDemoBookings(false);
+      } else {
+        setBookings(demoBookingHistory);
+        setUsingDemoBookings(true);
+      }
     } catch (err) {
-      setError('Failed to fetch bookings');
+      setError('Live bookings are unavailable. Showing sample records.');
+      setBookings(demoBookingHistory);
+      setUsingDemoBookings(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -25,7 +36,7 @@ const BookingHistory = () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
       try {
         await bookingService.cancelBooking(id);
-        setBookings(bookings.map(b => b._id === id ? { ...b, status: 'Cancelled' } : b));
+        setBookings((current) => current.map((b) => (b._id === id ? { ...b, status: 'Cancelled' } : b)));
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to cancel booking');
       }
@@ -38,6 +49,9 @@ const BookingHistory = () => {
     <div className="card">
       <h2>My Bookings</h2>
       {error && <div className="alert alert-error">{error}</div>}
+      {usingDemoBookings && (
+        <div className="alert alert-warning">Showing sample booking history because your live history is empty.</div>
+      )}
       
       {bookings.length === 0 ? (
         <p>No bookings yet.</p>
@@ -62,11 +76,16 @@ const BookingHistory = () => {
                   {booking.type === 'cab' && `${booking.pickupLocation} → ${booking.dropLocation}`}
                 </td>
                 <td>{new Date(booking.date || booking.pickupTime).toLocaleDateString()}</td>
-                <td><strong>{booking.status}</strong></td>
                 <td>
-                  {['Pending', 'Waitlisted', 'Accepted', 'Confirmed', 'Approved'].includes(booking.status) && (
+                  <strong className={booking.status === 'Cancelled' ? 'status-offline' : 'status-online'}>
+                    {booking.status}
+                  </strong>
+                </td>
+                <td>
+                  {!booking.isDemo && ['Pending', 'Waitlisted', 'Accepted', 'Confirmed', 'Approved'].includes(booking.status) && (
                     <button onClick={() => handleCancel(booking._id)} className="button button-danger">Cancel</button>
                   )}
+                  {booking.isDemo && <span className="helper-text">Sample record</span>}
                 </td>
               </tr>
             ))}

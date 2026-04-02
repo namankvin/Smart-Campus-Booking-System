@@ -13,6 +13,8 @@ const CabOperatorDashboard = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const availableCount = cabs.length;
+
   const fetchCabs = async () => {
     try {
       const res = await cabService.getAvailable();
@@ -64,6 +66,28 @@ const CabOperatorDashboard = () => {
       </nav>
 
       <div className="container">
+        <div className="page-intro">
+          <div className="section-kicker">Fleet</div>
+          <h2>Keep the campus cab fleet available, visible, and ready for booking.</h2>
+          <p>
+            Add new cabs, review active inventory, and ensure pickup details stay readable for riders and operators.
+          </p>
+          <div className="metric-row" style={{ marginTop: '18px' }}>
+            <div className="metric-card">
+              <strong>{availableCount}</strong>
+              <span>Available cabs</span>
+            </div>
+            <div className="metric-card">
+              <strong>{newCab.capacity || 4}</strong>
+              <span>Draft capacity</span>
+            </div>
+            <div className="metric-card">
+              <strong>Live</strong>
+              <span>Operator dashboard</span>
+            </div>
+          </div>
+        </div>
+
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 

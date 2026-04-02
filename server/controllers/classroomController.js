@@ -1,8 +1,38 @@
 const Classroom = require('../models/Classroom');
 
+const defaultClassrooms = [
+  {
+    name: 'LHC-101',
+    capacity: 120,
+    location: 'Lecture Hall Complex - Block A',
+    amenities: ['Projector', 'Smart Board', 'Air Conditioning'],
+    isActive: true
+  },
+  {
+    name: 'CSE-205',
+    capacity: 75,
+    location: 'CSE Department - 2nd Floor',
+    amenities: ['Projector', 'Whiteboard'],
+    isActive: true
+  },
+  {
+    name: 'ME-310',
+    capacity: 60,
+    location: 'Mechanical Block - 3rd Floor',
+    amenities: ['Smart Display', 'Mic System'],
+    isActive: true
+  }
+];
+
 const getAllClassrooms = async (req, res) => {
   try {
-    const classrooms = await Classroom.find({ isActive: true });
+    let classrooms = await Classroom.find({ isActive: true });
+
+    if (classrooms.length === 0) {
+      await Classroom.insertMany(defaultClassrooms);
+      classrooms = await Classroom.find({ isActive: true });
+    }
+
     res.json(classrooms);
   } catch (error) {
     res.status(500).json({ error: error.message });
