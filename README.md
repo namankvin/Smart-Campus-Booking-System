@@ -56,7 +56,7 @@ A comprehensive web application for booking campus resources including classroom
 - Quick Dev Login (best for presentations)
   - Choose role from dropdown
   - Click `Quick Dev Login` or `Sign in (Development)`
-  - Uses dev account `avi.verma2006@gmail.com` and sets the selected role
+  - Uses predefined dev accounts and sets the selected role
 - Google OAuth Login
   - Click `Sign in with Google` (requires `REACT_APP_GOOGLE_CLIENT_ID`)
   - For Student role, Google email must end with `@student.nitw.ac.in`
