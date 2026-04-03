@@ -47,6 +47,7 @@ export const menuService = {
 
 export const cabService = {
   getAvailable: () => api.get('/cabs'),
+  getMyStats: () => api.get('/cabs/operator/my-stats'),
   create: (data) => api.post('/cabs', data),
   updateStatus: (id, data) => api.put(`/cabs/${id}`, data)
 };
@@ -56,11 +57,14 @@ export const adminService = {
   approveBooking: (id) => api.post(`/admin/bookings/${id}/approve`),
   rejectBooking: (id) => api.post(`/admin/bookings/${id}/reject`),
   updateOrderStatus: (id, data) => api.put(`/admin/orders/${id}/status`, data),
-  getVendorOrders: (vendor) => api.get('/admin/vendor/orders', { params: { vendor } }),
+  getVendorOrders: () => api.get('/admin/vendor/orders'),
   generateReports: (params) => api.get('/admin/reports', { params }),
   getClassrooms: () => api.get('/admin/classrooms'),
+  getCabs: () => api.get('/admin/cabs'),
   getUsers: () => api.get('/admin/users'),
-  updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role })
+  updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  mapVendorRestaurant: (id, restaurantName) => api.put(`/admin/users/${id}/vendor-mapping`, { restaurantName }),
+  mapCabOperator: (id, cabId) => api.put(`/admin/users/${id}/cab-mapping`, { cabId })
 };
 
 export const notificationService = {

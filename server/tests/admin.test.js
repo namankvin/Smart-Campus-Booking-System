@@ -2,6 +2,8 @@ const request = require('supertest');
 const { createAppServer } = require('../app');
 const Classroom = require('../models/Classroom');
 const Booking = require('../models/Booking');
+const Cab = require('../models/Cab');
+const User = require('../models/User');
 const { createUserAndToken } = require('./helpers');
 
 describe('Admin API', () => {
@@ -59,5 +61,54 @@ describe('Admin API', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ role: 'Vendor' })
       .expect(403);
+  });
+
+  it('allows admin to map vendor user to a restaurant', async () => {
+    const { app } = createAppServer();
+    const { token: adminToken } = await createUserAndToken({ role: 'Admin', email: 'admin@test.edu' });
+    const vendorUser = await User.create({
+      googleId: 'vendor-map-1',
+      email: 'vendor-map@test.edu',
+      name: 'Vendor Mapper',
+      role: 'Guest'
+    });
+
+    const res = await request(app)
+      .put(`/api/admin/users/${vendorUser._id}/vendor-mapping`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ restaurantName: 'Taaza Tiffins' })
+      .expect(200);
+
+    expect(res.body.role).toBe('Vendor');
+    expect(res.body.assignedRestaurant).toBe('Taaza Tiffins');
+  });
+
+  it('allows admin to map cab operator user to a cab', async () => {
+    const { app } = createAppServer();
+    const { token: adminToken } = await createUserAndToken({ role: 'Admin', email: 'admin@test.edu' });
+    const cabUser = await User.create({
+      googleId: 'cab-map-1',
+      email: 'cab-map@test.edu',
+      name: 'Cab Mapper',
+      role: 'Guest'
+    });
+
+    await Cab.create({
+      id: 'CAB-881',
+      driver: 'Demo Driver',
+      capacity: 4,
+      routeName: 'Campus Loop',
+      routeStops: ['Main Gate', 'Academic Block']
+    });
+
+    const res = await request(app)
+      .put(`/api/admin/users/${cabUser._id}/cab-mapping`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ cabId: 'CAB-881' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Cab Operator');
+    expect(res.body.cab.id).toBe('CAB-881');
+    expect(res.body.cab.assignedOperator.toString()).toBe(cabUser._id.toString());
   });
 });

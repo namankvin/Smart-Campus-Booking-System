@@ -6,6 +6,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import VendorDashboard from './pages/VendorDashboard';
 import CabOperatorDashboard from './pages/CabOperatorDashboard';
+import GuestDashboard from './pages/GuestDashboard';
 
 const ProtectedRoute = ({ user, children, requiredRole }) => {
   if (!user) {
@@ -27,6 +28,7 @@ const AppContent = () => {
     if (user.role === 'Admin') return <AdminDashboard />;
     if (user.role === 'Vendor') return <VendorDashboard />;
     if (user.role === 'Cab Operator') return <CabOperatorDashboard />;
+    if (user.role === 'Guest') return <GuestDashboard />;
     return <StudentDashboard />;
   };
 

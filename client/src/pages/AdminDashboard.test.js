@@ -23,9 +23,12 @@ jest.mock('../services/api', () => ({
     generateReports: jest.fn(),
     getUsers: jest.fn(),
     getClassrooms: jest.fn(),
+    getCabs: jest.fn(),
     approveBooking: jest.fn(),
     rejectBooking: jest.fn(),
     updateUserRole: jest.fn(),
+    mapVendorRestaurant: jest.fn(),
+    mapCabOperator: jest.fn(),
     getVendorOrders: jest.fn(),
     updateOrderStatus: jest.fn()
   },
@@ -54,13 +57,16 @@ describe('AdminDashboard', () => {
       ]
     });
     adminService.generateReports.mockResolvedValue({
-      data: { totalBookings: 7, revenue: 1250 }
+      data: { totalBookings: 7, byType: { classroom: 3, food: 2, cab: 2 } }
     });
     adminService.getUsers.mockResolvedValue({
       data: [{ _id: 'user-1', name: 'Alice', email: 'alice@test.edu', role: 'Student' }]
     });
     adminService.getClassrooms.mockResolvedValue({
       data: [{ _id: 'classroom-1', name: 'LHC-101', capacity: 80, location: 'LHC Block A', isActive: true }]
+    });
+    adminService.getCabs.mockResolvedValue({
+      data: [{ _id: 'cab-1', id: 'CAB-001', routeName: 'North Campus Loop', assignedOperator: null }]
     });
     adminService.updateUserRole.mockResolvedValue({ data: { _id: 'user-1', role: 'Vendor' } });
     classroomService.create.mockResolvedValue({ data: { _id: 'classroom-2', name: 'CSE-102' } });
@@ -72,7 +78,9 @@ describe('AdminDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Pending Classroom Bookings (1)')).toBeInTheDocument();
-      expect(screen.getByText('Total Bookings:')).toBeInTheDocument();
+      expect(screen.getByText('Total classroom bookings')).toBeInTheDocument();
+      expect(screen.getByText('Vendor orders managed')).toBeInTheDocument();
+      expect(screen.getByText('Cab orders handled by operators')).toBeInTheDocument();
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 

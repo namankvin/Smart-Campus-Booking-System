@@ -1,4 +1,6 @@
 const request = require('supertest');
+const User = require('../models/User');
+const Cab = require('../models/Cab');
 
 const mockVerifyIdToken = jest.fn();
 
@@ -19,7 +21,7 @@ describe('Auth API', () => {
     delete process.env.INSTITUTIONAL_EMAIL_DOMAIN;
   });
 
-  it('creates a new user from a valid Google token and forces Student role', async () => {
+  it('creates a new student user from a valid institutional Google token', async () => {
     mockVerifyIdToken.mockResolvedValue({
       getPayload: () => ({
         sub: 'google-sub-1',
@@ -33,7 +35,7 @@ describe('Auth API', () => {
 
     const res = await request(app)
       .post('/api/auth/google-login')
-      .send({ credential: 'valid-token', role: 'Admin' })
+      .send({ credential: 'valid-token', role: 'Student' })
       .expect(200);
 
     expect(mockVerifyIdToken).toHaveBeenCalledWith({
@@ -66,7 +68,7 @@ describe('Auth API', () => {
     expect(res.body.error).toBe('Invalid Google token');
   });
 
-  it('returns 403 when institutional domain does not match', async () => {
+  it('returns 403 when institutional domain does not match for student/faculty sign-in', async () => {
     process.env.INSTITUTIONAL_EMAIL_DOMAIN = 'test.edu';
     mockVerifyIdToken.mockResolvedValue({
       getPayload: () => ({
@@ -80,13 +82,13 @@ describe('Auth API', () => {
 
     const res = await request(app)
       .post('/api/auth/google-login')
-      .send({ credential: 'domain-mismatch-token' })
+      .send({ credential: 'domain-mismatch-token', role: 'Student' })
       .expect(403);
 
     expect(res.body.error).toContain('@test.edu');
   });
 
-  it('returns 403 for non-NITW email when domain override is not configured', async () => {
+  it('returns 403 for non-NITW email when student/faculty domain override is not configured', async () => {
     mockVerifyIdToken.mockResolvedValue({
       getPayload: () => ({
         sub: 'google-sub-4',
@@ -99,10 +101,137 @@ describe('Auth API', () => {
 
     const res = await request(app)
       .post('/api/auth/google-login')
-      .send({ credential: 'non-nitw-token' })
+      .send({ credential: 'non-nitw-token', role: 'Student' })
       .expect(403);
 
     expect(res.body.error).toContain('.nitw.ac.in');
+  });
+
+  it('allows only hardcoded admin email for admin login', async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-sub-admin',
+        email: 'not-allowed-admin@gmail.com',
+        name: 'Blocked Admin'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'admin-blocked-token', role: 'Admin' })
+      .expect(403);
+
+    expect(res.body.error).toContain('authorized email');
+  });
+
+  it('falls back to Guest for unmapped vendor login', async () => {
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-sub-vendor',
+        email: 'vendor.unmapped@gmail.com',
+        name: 'Unmapped Vendor'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'vendor-unmapped-token', role: 'Vendor' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Guest');
+  });
+
+  it('allows mapped vendor email to sign in as vendor', async () => {
+    await User.create({
+      googleId: 'existing-vendor-sub',
+      email: 'vendor.mapped@gmail.com',
+      name: 'Mapped Vendor',
+      role: 'Vendor',
+      assignedRestaurant: 'Taaza Tiffins'
+    });
+
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'existing-vendor-sub',
+        email: 'vendor.mapped@gmail.com',
+        name: 'Mapped Vendor'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'vendor-mapped-token', role: 'Vendor' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Vendor');
+    expect(res.body.user.assignedRestaurant).toBe('Taaza Tiffins');
+  });
+
+  it('allows mapped cab operator email to sign in as cab operator', async () => {
+    const operator = await User.create({
+      googleId: 'existing-cab-sub',
+      email: 'cab.operator@gmail.com',
+      name: 'Mapped Cab Operator',
+      role: 'Cab Operator'
+    });
+
+    await Cab.create({
+      id: 'CAB-991',
+      assignedOperator: operator._id,
+      driver: 'Mapped Cab Operator',
+      capacity: 4,
+      routeName: 'North Campus Loop',
+      routeStops: ['Main Gate', 'Library']
+    });
+
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'existing-cab-sub',
+        email: 'cab.operator@gmail.com',
+        name: 'Mapped Cab Operator'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'cab-mapped-token', role: 'Cab Operator' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Cab Operator');
+  });
+
+  it('allows a guest user to sign in as student with institutional email', async () => {
+    await User.create({
+      googleId: 'guest-sub',
+      email: 'guest.user@student.nitw.ac.in',
+      name: 'Guest User',
+      role: 'Guest'
+    });
+
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'guest-sub',
+        email: 'guest.user@student.nitw.ac.in',
+        name: 'Guest User'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'guest-to-student-token', role: 'Student' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Student');
   });
 
   it('allows quick development login in non-production mode', async () => {

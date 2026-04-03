@@ -7,6 +7,11 @@ const Login = ({ onLogin }) => {
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [role, setRole] = useState('Student');
+  const featureHighlights = [
+    { label: 'Role-based dashboards', Icon: FiUsers },
+    { label: 'Fast booking flows', Icon: FiZap },
+    { label: 'Secure session handling', Icon: FiShield }
+  ];
   const isDevelopment = process.env.NODE_ENV === 'development';
   const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
   const isGoogleConfigured = Boolean(
@@ -14,16 +19,20 @@ const Login = ({ onLogin }) => {
   );
 
   const roleOptions = [
-    { value: 'Student', label: 'Student' },
-    { value: 'Faculty', label: 'Faculty' },
+    { value: 'Student', label: 'Student/Faculty' },
     { value: 'Vendor', label: 'Vendor' },
     { value: 'Cab Operator', label: 'Cab Operator' },
     { value: 'Admin', label: 'Admin' }
   ];
 
+  const roleHelperText = role === 'Student'
+    ? 'Student/Faculty sign-in requires institutional mail ending with .nitw.ac.in.'
+    : role === 'Admin'
+      ? 'Admin access is restricted to pre-approved email addresses.'
+      : 'Vendor and cab operator access requires admin mapping. Unmapped emails are signed in as Guest.';
+
   const demoIdentityByRole = {
     Student: 'student.demo@smartcampus.local',
-    Faculty: 'faculty.demo@smartcampus.local',
     Vendor: 'vendor.demo@smartcampus.local',
     'Cab Operator': 'cab.demo@smartcampus.local',
     Admin: 'admin.demo@smartcampus.local'
@@ -68,19 +77,28 @@ const Login = ({ onLogin }) => {
   return (
     <div className="auth-shell">
       <div className="auth-hero">
-        <div className="auth-eyebrow">
-          <FiShield />
-          <span>Smart campus operations</span>
-        </div>
         <h1>One place for rooms, rides, meals, and approvals.</h1>
         <p>
           A cleaner way for students, faculty, vendors, cab operators, and admins to manage daily campus logistics without friction.
         </p>
 
-        <div className="feature-grid">
-          <div className="feature-chip"><FiUsers /> Role-based dashboards</div>
-          <div className="feature-chip"><FiZap /> Fast booking flows</div>
-          <div className="feature-chip"><FiShield /> Secure session handling</div>
+        <div className="feature-marquee" aria-label="Platform capabilities">
+          <div className="feature-track feature-track-a">
+            {featureHighlights.map(({ label, Icon }) => (
+              <div className="feature-chip" key={`a-${label}`}>
+                <Icon />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="feature-track feature-track-b" aria-hidden="true">
+            {featureHighlights.map(({ label, Icon }) => (
+              <div className="feature-chip" key={`b-${label}`}>
+                <Icon />
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -90,11 +108,10 @@ const Login = ({ onLogin }) => {
             <div className="section-kicker">Sign in</div>
             <h2>Continue to your dashboard</h2>
           </div>
-          <div className="status-pill">Live</div>
         </div>
 
         <p className="auth-copy">
-          Pick your role, then sign in with your NIT Warangal Google account. Development mode is still available for local testing.
+          Pick your role, then sign in with your Google account. Access rules are applied based on selected role.
         </p>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -115,7 +132,7 @@ const Login = ({ onLogin }) => {
             ))}
           </select>
           <p className="helper-text">
-            Production login accepts only institutional Google emails ending with .nitw.ac.in.
+            {roleHelperText}
           </p>
         </div>
 
