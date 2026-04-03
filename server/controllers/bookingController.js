@@ -459,16 +459,7 @@ const bookCab = async (req, res, io) => {
       return res.status(400).json({ error: 'Can only book cabs up to 6 hours in advance' });
     }
 
-    const allowedLocations = (process.env.CAMPUS_LOCATIONS || '')
-      .split(',')
-      .map((location) => location.trim())
-      .filter(Boolean);
 
-    if (allowedLocations.length > 0) {
-      if (!allowedLocations.includes(pickupLocation) || !allowedLocations.includes(dropLocation)) {
-        return res.status(400).json({ error: 'Pickup/drop location must be within campus-approved locations' });
-      }
-    }
 
     const existingActiveCabBooking = await Booking.findOne({
       user: req.user.id,
