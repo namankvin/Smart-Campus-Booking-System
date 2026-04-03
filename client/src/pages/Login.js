@@ -90,7 +90,6 @@ const Login = ({ onLogin }) => {
             <div className="section-kicker">Sign in</div>
             <h2>Continue to your dashboard</h2>
           </div>
-          <div className="status-pill">Live</div>
         </div>
 
         <p className="auth-copy">

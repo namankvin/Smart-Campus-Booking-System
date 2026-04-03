@@ -497,14 +497,6 @@ a {
   font-weight: 700;
 }
 
-.status-pill {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(52, 211, 153, 0.12);
-  color: #9ff3cf;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-}
-
 .auth-copy,
 .helper-text {
   color: var(--muted);
