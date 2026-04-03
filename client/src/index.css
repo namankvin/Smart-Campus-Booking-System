@@ -166,6 +166,11 @@ a {
   box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.14);
 }
 
+select option {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
 .button {
   background: linear-gradient(135deg, var(--primary-strong), var(--primary));
   color: #052036;

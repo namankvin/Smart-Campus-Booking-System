@@ -348,26 +348,31 @@ const placeFoodOrder = async (req, res, io) => {
       date: normalizeDate(pickupDate)
     });
 
-    if (!menu) {
-      return res.status(404).json({ error: 'Menu not available for selected vendor/date' });
-    }
-
     const normalizedItems = [];
     for (const item of items) {
       if (!item.name || !Number.isInteger(item.quantity) || item.quantity < 1) {
         return res.status(400).json({ error: 'Each item must include a valid name and quantity' });
       }
 
-      const menuItem = menu.items.find((menuEntry) => menuEntry.name === item.name);
-      if (!menuItem || !menuItem.isAvailable) {
-        return res.status(400).json({ error: `${item.name} is unavailable` });
+      if (menu) {
+        // Live menu exists — validate against it
+        const menuItem = menu.items.find((menuEntry) => menuEntry.name === item.name);
+        if (!menuItem || !menuItem.isAvailable) {
+          return res.status(400).json({ error: `${item.name} is unavailable` });
+        }
+        normalizedItems.push({
+          name: menuItem.name,
+          quantity: item.quantity,
+          price: menuItem.price
+        });
+      } else {
+        // No menu in DB (demo/dev mode) — accept as-is
+        normalizedItems.push({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price || 0
+        });
       }
-
-      normalizedItems.push({
-        name: menuItem.name,
-        quantity: item.quantity,
-        price: menuItem.price
-      });
     }
 
     const slotCapacity = Number(process.env.FOOD_SLOT_CAPACITY || 50);

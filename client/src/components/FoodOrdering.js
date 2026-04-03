@@ -61,7 +61,8 @@ const FoodOrdering = ({ onSuccess }) => {
     try {
       const normalizedItems = cart.map((item) => ({
         name: item.name,
-        quantity: item.quantity
+        quantity: item.quantity,
+        price: item.price
       }));
 
       await bookingService.placeFoodOrder({
