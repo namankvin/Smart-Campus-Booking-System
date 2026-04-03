@@ -54,7 +54,7 @@ describe('AdminDashboard', () => {
       ]
     });
     adminService.generateReports.mockResolvedValue({
-      data: { totalBookings: 7, revenue: 1250 }
+      data: { totalBookings: 7, byType: { classroom: 3, food: 2, cab: 2 } }
     });
     adminService.getUsers.mockResolvedValue({
       data: [{ _id: 'user-1', name: 'Alice', email: 'alice@test.edu', role: 'Student' }]
@@ -72,7 +72,9 @@ describe('AdminDashboard', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Pending Classroom Bookings (1)')).toBeInTheDocument();
-      expect(screen.getByText('Total Bookings:')).toBeInTheDocument();
+      expect(screen.getByText('Total classroom bookings')).toBeInTheDocument();
+      expect(screen.getByText('Vendor orders managed')).toBeInTheDocument();
+      expect(screen.getByText('Cab orders handled by operators')).toBeInTheDocument();
       expect(screen.getByText('Alice')).toBeInTheDocument();
     });
 

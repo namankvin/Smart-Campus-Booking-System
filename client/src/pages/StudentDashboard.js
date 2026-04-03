@@ -35,7 +35,7 @@ const StudentDashboard = () => {
         </div>
       </nav>
 
-      <div className="container">
+      <div className="container dashboard-stack">
         <div className="page-intro">
           <div className="section-kicker">Overview</div>
           <h2>Plan room bookings, meals, transport, and history from one place.</h2>

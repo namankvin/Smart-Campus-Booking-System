@@ -125,9 +125,10 @@ const AdminDashboard = () => {
 
   if (loading) return <div className="loading">Loading admin dashboard...</div>;
 
-  const totalUsers = users.length;
-  const totalPending = pendingBookings.length;
-  const totalRevenue = reports?.revenue || 0;
+  const totalPendingClassroomApprovals = pendingBookings.length;
+  const totalClassroomBookings = reports?.byType?.classroom || 0;
+  const totalVendorOrdersManaged = reports?.byType?.food || 0;
+  const totalCabOrdersHandled = reports?.byType?.cab || 0;
 
   return (
     <div>
@@ -140,48 +141,34 @@ const AdminDashboard = () => {
         </div>
       </nav>
 
-      <div className="container">
+      <div className="container dashboard-stack">
         <div className="page-intro">
           <div className="section-kicker">Operations</div>
           <h2>Approve requests, monitor usage, and keep the campus system moving.</h2>
           <p>
-            Review pending bookings, update user roles, and track the operational snapshot for the last 30 days.
+            Review classroom approvals, monitor order volume, and track the 30-day operational snapshot.
           </p>
           <div className="metric-row" style={{ marginTop: '18px' }}>
             <div className="metric-card">
-              <strong>{totalPending}</strong>
-              <span>Pending requests</span>
+              <strong>{totalPendingClassroomApprovals}</strong>
+              <span>Pending classroom approvals</span>
             </div>
             <div className="metric-card">
-              <strong>{totalUsers}</strong>
-              <span>Total users</span>
+              <strong>{totalClassroomBookings}</strong>
+              <span>Total classroom bookings</span>
             </div>
             <div className="metric-card">
-              <strong>${totalRevenue}</strong>
-              <span>Reported revenue</span>
+              <strong>{totalVendorOrdersManaged}</strong>
+              <span>Vendor orders managed</span>
+            </div>
+            <div className="metric-card">
+              <strong>{totalCabOrdersHandled}</strong>
+              <span>Cab orders handled by operators</span>
             </div>
           </div>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
-
-        <div className="dashboard">
-          <div className="card">
-            <h2>Summary</h2>
-            {reports ? (
-              <>
-                <p>Total Bookings: <strong>{reports.totalBookings}</strong></p>
-                <p>Revenue: <strong>${reports.revenue}</strong></p>
-                <p>Pending classroom approvals: <strong>{pendingBookings.length}</strong></p>
-              </>
-            ) : (
-              <p>No reporting data available.</p>
-            )}
-            <div className="button-group" style={{ marginTop: '16px' }}>
-              <button className="button button-ghost" onClick={fetchData}>Refresh data</button>
-            </div>
-          </div>
-        </div>
 
         <div className="card">
           <h2>Pending Classroom Bookings ({pendingBookings.length})</h2>

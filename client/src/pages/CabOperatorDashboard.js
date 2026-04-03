@@ -65,7 +65,7 @@ const CabOperatorDashboard = () => {
         </div>
       </nav>
 
-      <div className="container">
+      <div className="container dashboard-stack">
         <div className="page-intro">
           <div className="section-kicker">Fleet</div>
           <h2>Keep the campus cab fleet available, visible, and ready for booking.</h2>

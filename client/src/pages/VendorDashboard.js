@@ -122,7 +122,7 @@ const VendorDashboard = () => {
         </div>
       </nav>
 
-      <div className="container">
+      <div className="container dashboard-stack">
         <div className="page-intro">
           <div className="section-kicker">Vendor operations</div>
           <h2>Manage your outlet menu and active orders from a single workspace.</h2>

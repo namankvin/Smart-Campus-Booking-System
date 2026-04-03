@@ -20,17 +20,29 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  background-color: #050913;
+}
+
 body {
   margin: 0;
   font-family: 'Avenir Next', 'Segoe UI Variable', 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: var(--text);
+  background-color: #050913;
   background:
     radial-gradient(circle at top left, rgba(110, 231, 255, 0.24), transparent 34%),
     radial-gradient(circle at 85% 20%, rgba(52, 211, 153, 0.18), transparent 28%),
     linear-gradient(180deg, #07101f 0%, #0b1324 48%, #050913 100%);
   min-height: 100vh;
+  overscroll-behavior-y: none;
 }
 
 body::before {
@@ -443,22 +455,30 @@ a {
   font-size: 1.05rem;
 }
 
-.auth-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--border);
-  color: var(--primary);
+.feature-marquee {
+  position: relative;
+  margin-top: 28px;
+  overflow: hidden;
+  min-height: 50px;
+  mask-image: linear-gradient(90deg, transparent 0, black 7%, black 93%, transparent 100%);
 }
 
-.feature-grid {
+.feature-track {
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
-  flex-wrap: wrap;
   gap: 12px;
-  margin-top: 28px;
+  width: max-content;
+  will-change: transform;
+}
+
+.feature-track-a {
+  animation: marquee-track-a 11s linear infinite;
+}
+
+.feature-track-b {
+  animation: marquee-track-b 11s linear infinite;
 }
 
 .feature-chip {
@@ -470,6 +490,28 @@ a {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border);
   color: var(--text);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+@keyframes marquee-track-a {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-100% - 12px));
+  }
+}
+
+@keyframes marquee-track-b {
+  from {
+    transform: translateX(calc(100% + 12px));
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 .auth-card {
@@ -549,6 +591,18 @@ a {
 .page-intro p {
   margin: 8px 0 0;
   color: var(--muted);
+}
+
+.dashboard-stack {
+  display: grid;
+  gap: 24px;
+}
+
+.dashboard-stack .page-intro,
+.dashboard-stack .dashboard,
+.dashboard-stack .tab-strip,
+.dashboard-stack .alert {
+  margin: 0;
 }
 
 .button-group {
