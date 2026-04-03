@@ -18,6 +18,7 @@ jest.mock('./pages/StudentDashboard', () => () => <div>Student Dashboard Mock</d
 jest.mock('./pages/AdminDashboard', () => () => <div>Admin Dashboard Mock</div>);
 jest.mock('./pages/VendorDashboard', () => () => <div>Vendor Dashboard Mock</div>);
 jest.mock('./pages/CabOperatorDashboard', () => () => <div>Cab Dashboard Mock</div>);
+jest.mock('./pages/GuestDashboard', () => () => <div>Guest Dashboard Mock</div>);
 
 describe('App role routing', () => {
   beforeEach(() => {
@@ -53,6 +54,17 @@ describe('App role routing', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Vendor Dashboard Mock')).toBeInTheDocument();
+    });
+  });
+
+  it('renders guest dashboard for guest role', async () => {
+    mockAuthState.token = 'fake-token';
+    mockAuthState.user = { name: 'Guest', role: 'Guest', email: 'guest@test.edu' };
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Guest Dashboard Mock')).toBeInTheDocument();
     });
   });
 });

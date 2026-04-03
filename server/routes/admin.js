@@ -7,9 +7,12 @@ const {
   updateOrderStatus,
   generateReports,
   getClassroomsByAdmin,
+  getFleetCabs,
   getUsers,
   updateUserRole,
-  getVendorOrders
+  getVendorOrders,
+  updateVendorRestaurantMapping,
+  updateCabOperatorMapping
 } = require('../controllers/adminController');
 
 module.exports = (io) => {
@@ -22,8 +25,11 @@ module.exports = (io) => {
   router.get('/vendor/orders', authenticateToken, authorize('Vendor'), getVendorOrders);
   router.get('/reports', authenticateToken, authorize('Admin'), generateReports);
   router.get('/classrooms', authenticateToken, authorize('Admin'), getClassroomsByAdmin);
+  router.get('/cabs', authenticateToken, authorize('Admin'), getFleetCabs);
   router.get('/users', authenticateToken, authorize('Admin'), getUsers);
   router.put('/users/:id/role', authenticateToken, authorize('Admin'), updateUserRole);
+  router.put('/users/:id/vendor-mapping', authenticateToken, authorize('Admin'), updateVendorRestaurantMapping);
+  router.put('/users/:id/cab-mapping', authenticateToken, authorize('Admin'), updateCabOperatorMapping);
   
   return router;
 };

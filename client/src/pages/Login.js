@@ -25,6 +25,12 @@ const Login = ({ onLogin }) => {
     { value: 'Admin', label: 'Admin' }
   ];
 
+  const roleHelperText = role === 'Student'
+    ? 'Student/Faculty sign-in requires institutional mail ending with .nitw.ac.in.'
+    : role === 'Admin'
+      ? 'Admin access is restricted to pre-approved email addresses.'
+      : 'Vendor and cab operator access requires admin mapping. Unmapped emails are signed in as Guest.';
+
   const demoIdentityByRole = {
     Student: 'student.demo@smartcampus.local',
     Vendor: 'vendor.demo@smartcampus.local',
@@ -105,7 +111,7 @@ const Login = ({ onLogin }) => {
         </div>
 
         <p className="auth-copy">
-          Pick your role, then sign in with your NIT Warangal Google account.
+          Pick your role, then sign in with your Google account. Access rules are applied based on selected role.
         </p>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -126,7 +132,7 @@ const Login = ({ onLogin }) => {
             ))}
           </select>
           <p className="helper-text">
-            Production login accepts only institutional Google emails ending with .nitw.ac.in.
+            {roleHelperText}
           </p>
         </div>
 

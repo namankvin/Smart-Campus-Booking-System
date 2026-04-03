@@ -2,8 +2,10 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const Log = require('../models/Log');
+const Cab = require('../models/Cab');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const ADMIN_ALLOWED_EMAILS = ['namank1506@gmail.com'];
 
 const logAuthAttempt = async ({ action, user, details }) => {
   try {
@@ -30,9 +32,102 @@ const isInstitutionalEmail = (email, configuredDomain) => {
   return /@([a-z0-9-]+\.)+nitw\.ac\.in$/i.test(normalizedEmail);
 };
 
+const isAdminEmailAllowed = (email) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  return ADMIN_ALLOWED_EMAILS.includes(normalizedEmail);
+};
+
+const normalizeRequestedRole = (role) => {
+  const roleValue = String(role || 'Student').trim();
+  if (roleValue === 'Faculty') return 'Student';
+  const allowedRoles = ['Student', 'Vendor', 'Cab Operator', 'Admin'];
+  return allowedRoles.includes(roleValue) ? roleValue : 'Student';
+};
+
+const resolveUserRole = async ({ user, requestedRole, email, institutionalDomain }) => {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+
+  if (user) {
+    if (user.role === 'Admin') {
+      if (!isAdminEmailAllowed(normalizedEmail)) {
+        return { error: 'Admin access is restricted to authorized email addresses only.' };
+      }
+      return { role: 'Admin' };
+    }
+
+    if (user.role === 'Student' || user.role === 'Faculty') {
+      if (!isInstitutionalEmail(normalizedEmail, institutionalDomain)) {
+        return {
+          error: institutionalDomain
+            ? `Use your institutional account ending with @${institutionalDomain}`
+            : 'Use your NITW institutional account ending with .nitw.ac.in'
+        };
+      }
+      return { role: user.role };
+    }
+
+    if (user.role === 'Vendor') {
+      if (user.assignedRestaurant) {
+        return { role: 'Vendor' };
+      }
+      return { role: 'Guest' };
+    }
+
+    if (user.role === 'Cab Operator') {
+      const hasAssignedCab = await Cab.exists({ assignedOperator: user._id });
+      return { role: hasAssignedCab ? 'Cab Operator' : 'Guest' };
+    }
+
+    if (user.role === 'Guest') {
+      if (requestedRole === 'Student') {
+        if (!isInstitutionalEmail(normalizedEmail, institutionalDomain)) {
+          return {
+            error: institutionalDomain
+              ? `Use your institutional account ending with @${institutionalDomain}`
+              : 'Use your NITW institutional account ending with .nitw.ac.in'
+          };
+        }
+        return { role: 'Student' };
+      }
+
+      if (requestedRole === 'Admin') {
+        if (!isAdminEmailAllowed(normalizedEmail)) {
+          return { error: 'Admin access is restricted to authorized email addresses only.' };
+        }
+        return { role: 'Admin' };
+      }
+
+      return { role: 'Guest' };
+    }
+
+    return { role: 'Guest' };
+  }
+
+  if (requestedRole === 'Student') {
+    if (!isInstitutionalEmail(normalizedEmail, institutionalDomain)) {
+      return {
+        error: institutionalDomain
+          ? `Use your institutional account ending with @${institutionalDomain}`
+          : 'Use your NITW institutional account ending with .nitw.ac.in'
+      };
+    }
+    return { role: 'Student' };
+  }
+
+  if (requestedRole === 'Admin') {
+    if (!isAdminEmailAllowed(normalizedEmail)) {
+      return { error: 'Admin access is restricted to authorized email addresses only.' };
+    }
+    return { role: 'Admin' };
+  }
+
+  // Vendor/Cab Operator sign-ins without mapping default to guest access.
+  return { role: 'Guest' };
+};
+
 const googleLogin = async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, role } = req.body;
 
     if (!credential) {
       await logAuthAttempt({
@@ -61,24 +156,26 @@ const googleLogin = async (req, res) => {
     }
 
     const googleId = payload.sub;
-    const email = payload.email;
+    const email = String(payload.email || '').trim().toLowerCase();
     const name = payload.name || email;
     const profilePicture = payload.picture;
     const institutionalDomain = process.env.INSTITUTIONAL_EMAIL_DOMAIN;
-    let user = await User.findOne({ googleId });
+    const requestedRole = normalizeRequestedRole(role);
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
 
-    const targetRole = user?.role || 'Student';
+    const { role: resolvedRole, error: roleError } = await resolveUserRole({
+      user,
+      requestedRole,
+      email,
+      institutionalDomain
+    });
 
-    if (!isInstitutionalEmail(email, institutionalDomain)) {
+    if (roleError) {
       await logAuthAttempt({
         action: 'auth_login_failed',
-        details: { reason: 'non_institutional_email', email }
+        details: { reason: 'role_access_restricted', email, requestedRole }
       });
-      return res.status(403).json({
-        error: institutionalDomain
-          ? `Use your institutional account ending with @${institutionalDomain}`
-          : 'Use your NITW institutional account ending with .nitw.ac.in'
-      });
+      return res.status(403).json({ error: roleError });
     }
 
     if (!user) {
@@ -87,19 +184,29 @@ const googleLogin = async (req, res) => {
         email,
         name,
         profilePicture,
-        role: targetRole
+        role: resolvedRole
       });
       await user.save();
     } else {
       const nextProfile = {
+        googleId,
         email,
         name,
-        profilePicture: profilePicture || user.profilePicture
+        profilePicture: profilePicture || user.profilePicture,
+        role: resolvedRole
       };
-      if (user.email !== nextProfile.email || user.name !== nextProfile.name || user.profilePicture !== nextProfile.profilePicture) {
+      if (
+        user.googleId !== nextProfile.googleId ||
+        user.email !== nextProfile.email ||
+        user.name !== nextProfile.name ||
+        user.profilePicture !== nextProfile.profilePicture ||
+        user.role !== nextProfile.role
+      ) {
+        user.googleId = nextProfile.googleId;
         user.email = nextProfile.email;
         user.name = nextProfile.name;
         user.profilePicture = nextProfile.profilePicture;
+        user.role = nextProfile.role;
       }
       await user.save();
     }
@@ -109,7 +216,7 @@ const googleLogin = async (req, res) => {
     await logAuthAttempt({
       action: 'auth_login_success',
       user: user._id,
-      details: { email: user.email, role: user.role }
+      details: { email: user.email, role: user.role, requestedRole }
     });
     
     res.json({ token, user });
@@ -129,7 +236,7 @@ const devLogin = async (req, res) => {
     }
 
     const { email = 'dev.user@test.edu', name = 'Dev User', role = 'Student' } = req.body || {};
-    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin', 'Guest'];
     const normalizedRole = allowedRoles.includes(role) ? role : 'Student';
     const normalizedEmail = String(email).trim().toLowerCase();
 

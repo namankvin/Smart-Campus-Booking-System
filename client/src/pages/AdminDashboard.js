@@ -12,8 +12,12 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [reports, setReports] = useState(null);
   const [classrooms, setClassrooms] = useState([]);
+  const [cabs, setCabs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [vendorMappingForm, setVendorMappingForm] = useState({ userId: '', restaurantName: '' });
+  const [cabMappingForm, setCabMappingForm] = useState({ userId: '', cabId: '' });
   const [classroomForm, setClassroomForm] = useState({
     name: '',
     capacity: '',
@@ -26,20 +30,22 @@ const AdminDashboard = () => {
       setLoading(true);
       setError('');
 
-      const [bookingsRes, reportsRes, usersRes, classroomsRes] = await Promise.all([
+      const [bookingsRes, reportsRes, usersRes, classroomsRes, cabsRes] = await Promise.all([
         adminService.getPendingBookings(),
         adminService.generateReports({
           startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           endDate: new Date()
         }),
         adminService.getUsers(),
-        adminService.getClassrooms()
+        adminService.getClassrooms(),
+        adminService.getCabs()
       ]);
 
       setPendingBookings(bookingsRes.data);
       setReports(reportsRes.data);
       setUsers(usersRes.data);
       setClassrooms(classroomsRes.data || []);
+      setCabs(cabsRes.data || []);
     } catch (err) {
       setError('Failed to fetch admin data');
     } finally {
@@ -72,6 +78,7 @@ const AdminDashboard = () => {
   const handleRoleChange = async (id, role) => {
     try {
       await adminService.updateUserRole(id, role);
+      setSuccess('User role updated');
       setUsers((current) => current.map((item) => (item._id === id ? { ...item, role } : item)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update role');
@@ -102,6 +109,7 @@ const AdminDashboard = () => {
           : []
       };
       const response = await classroomService.create(payload);
+      setSuccess('Classroom created successfully');
       setClassrooms((current) => [response.data, ...current]);
       setClassroomForm({ name: '', capacity: '', location: '', amenities: '' });
     } catch (createError) {
@@ -115,6 +123,7 @@ const AdminDashboard = () => {
       const response = await classroomService.update(classroom._id, {
         isActive: classroom.isActive === false
       });
+      setSuccess('Classroom availability updated');
       setClassrooms((current) =>
         current.map((item) => (item._id === classroom._id ? response.data : item))
       );
@@ -124,6 +133,51 @@ const AdminDashboard = () => {
   };
 
   if (loading) return <div className="loading">Loading admin dashboard...</div>;
+
+  const vendorCandidates = users.filter((candidate) => ['Vendor', 'Guest'].includes(candidate.role));
+  const cabOperatorCandidates = users.filter((candidate) => ['Cab Operator', 'Guest'].includes(candidate.role));
+
+  const refreshUsersAndCabs = async () => {
+    const [usersRes, cabsRes] = await Promise.all([adminService.getUsers(), adminService.getCabs()]);
+    setUsers(usersRes.data || []);
+    setCabs(cabsRes.data || []);
+  };
+
+  const handleVendorMappingSubmit = async (event) => {
+    event.preventDefault();
+    if (!vendorMappingForm.userId || !vendorMappingForm.restaurantName.trim()) {
+      setError('Select a user and enter a restaurant name');
+      return;
+    }
+
+    try {
+      setError('');
+      await adminService.mapVendorRestaurant(vendorMappingForm.userId, vendorMappingForm.restaurantName.trim());
+      setSuccess('Vendor-to-restaurant mapping saved');
+      await refreshUsersAndCabs();
+      setVendorMappingForm({ userId: '', restaurantName: '' });
+    } catch (mappingError) {
+      setError(mappingError.response?.data?.error || 'Failed to save vendor mapping');
+    }
+  };
+
+  const handleCabMappingSubmit = async (event) => {
+    event.preventDefault();
+    if (!cabMappingForm.userId || !cabMappingForm.cabId) {
+      setError('Select a user and cab to save mapping');
+      return;
+    }
+
+    try {
+      setError('');
+      await adminService.mapCabOperator(cabMappingForm.userId, cabMappingForm.cabId);
+      setSuccess('Cab operator mapping saved');
+      await refreshUsersAndCabs();
+      setCabMappingForm({ userId: '', cabId: '' });
+    } catch (mappingError) {
+      setError(mappingError.response?.data?.error || 'Failed to save cab mapping');
+    }
+  };
 
   const totalPendingClassroomApprovals = pendingBookings.length;
   const totalClassroomBookings = reports?.byType?.classroom || 0;
@@ -169,6 +223,7 @@ const AdminDashboard = () => {
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
+        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="card">
           <h2>Pending Classroom Bookings ({pendingBookings.length})</h2>
@@ -218,6 +273,8 @@ const AdminDashboard = () => {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Role</th>
+                  <th>Restaurant Mapping</th>
+                  <th>Cab Mapping</th>
                   <th>Update</th>
                 </tr>
               </thead>
@@ -236,14 +293,86 @@ const AdminDashboard = () => {
                         <option value="Vendor">Vendor</option>
                         <option value="Cab Operator">Cab Operator</option>
                         <option value="Admin">Admin</option>
+                        <option value="Guest">Guest</option>
                       </select>
                     </td>
+                    <td>{item.assignedRestaurant || '-'}</td>
+                    <td>{cabs.find((cab) => cab.assignedOperator?._id === item._id)?.id || '-'}</td>
                     <td>Saved on select</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+        </div>
+
+        <div className="card">
+          <h2>Vendor to Restaurant Mapping</h2>
+          <form onSubmit={handleVendorMappingSubmit}>
+            <div className="surface-grid">
+              <div className="form-group">
+                <label>Vendor/Guest User</label>
+                <select
+                  value={vendorMappingForm.userId}
+                  onChange={(e) => setVendorMappingForm((prev) => ({ ...prev, userId: e.target.value }))}
+                >
+                  <option value="">Select user</option>
+                  {vendorCandidates.map((candidate) => (
+                    <option key={candidate._id} value={candidate._id}>
+                      {candidate.name} ({candidate.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Restaurant Name</label>
+                <input
+                  type="text"
+                  value={vendorMappingForm.restaurantName}
+                  onChange={(e) => setVendorMappingForm((prev) => ({ ...prev, restaurantName: e.target.value }))}
+                  placeholder="e.g. Taaza Tiffins"
+                />
+              </div>
+            </div>
+            <button type="submit" className="button button-success">Save Vendor Mapping</button>
+          </form>
+        </div>
+
+        <div className="card">
+          <h2>Cab Operator to Cab Mapping</h2>
+          <form onSubmit={handleCabMappingSubmit}>
+            <div className="surface-grid">
+              <div className="form-group">
+                <label>Cab Operator/Guest User</label>
+                <select
+                  value={cabMappingForm.userId}
+                  onChange={(e) => setCabMappingForm((prev) => ({ ...prev, userId: e.target.value }))}
+                >
+                  <option value="">Select user</option>
+                  {cabOperatorCandidates.map((candidate) => (
+                    <option key={candidate._id} value={candidate._id}>
+                      {candidate.name} ({candidate.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Cab</label>
+                <select
+                  value={cabMappingForm.cabId}
+                  onChange={(e) => setCabMappingForm((prev) => ({ ...prev, cabId: e.target.value }))}
+                >
+                  <option value="">Select cab</option>
+                  {cabs.map((cab) => (
+                    <option key={cab._id} value={cab.id}>
+                      {cab.id} ({cab.routeName || 'No route'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <button type="submit" className="button button-success">Save Cab Mapping</button>
+          </form>
         </div>
 
         <div className="card">

@@ -2,6 +2,7 @@ const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
+const Cab = require('../models/Cab');
 const { createNotification } = require('../utils/notifications');
 
 // Get all pending classroom bookings
@@ -209,6 +210,15 @@ const getClassroomsByAdmin = async (req, res) => {
   }
 };
 
+const getFleetCabs = async (req, res) => {
+  try {
+    const cabs = await Cab.find().populate('assignedOperator', 'name email role').sort({ id: 1 });
+    res.json(cabs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getUsers = async (req, res) => {
   try {
     const users = await User.find({}, '-googleId').sort({ createdAt: -1 });
@@ -222,7 +232,7 @@ const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin'];
+    const allowedRoles = ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin', 'Guest'];
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
@@ -256,9 +266,11 @@ const updateUserRole = async (req, res) => {
 
 const getVendorOrders = async (req, res) => {
   try {
-    const { vendor } = req.query;
+    const currentUser = await User.findById(req.user.id);
+    const vendor = currentUser?.assignedRestaurant;
+
     if (!vendor) {
-      return res.status(400).json({ error: 'Vendor is required' });
+      return res.status(403).json({ error: 'Vendor account is not mapped to a restaurant' });
     }
 
     const orders = await Booking.find({
@@ -273,6 +285,97 @@ const getVendorOrders = async (req, res) => {
   }
 };
 
+const updateVendorRestaurantMapping = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { restaurantName } = req.body;
+
+    const normalizedRestaurant = String(restaurantName || '').trim();
+    if (!normalizedRestaurant) {
+      return res.status(400).json({ error: 'Restaurant name is required' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.role = 'Vendor';
+    user.assignedRestaurant = normalizedRestaurant;
+    await user.save();
+
+    await Log.create({
+      action: 'vendor_restaurant_mapped',
+      user: req.user.id,
+      details: { targetUserId: user._id, restaurantName: normalizedRestaurant }
+    });
+
+    await createNotification({
+      recipient: user._id,
+      title: 'Vendor mapping updated',
+      message: `Your vendor account is now mapped to ${normalizedRestaurant}.`,
+      type: 'info',
+      metadata: { restaurantName: normalizedRestaurant },
+      io: req.io
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateCabOperatorMapping = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cabId } = req.body;
+
+    const normalizedCabId = String(cabId || '').trim();
+    if (!normalizedCabId) {
+      return res.status(400).json({ error: 'Cab ID is required' });
+    }
+
+    const [user, cab] = await Promise.all([
+      User.findById(id),
+      Cab.findOne({ id: normalizedCabId })
+    ]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!cab) {
+      return res.status(404).json({ error: 'Cab not found' });
+    }
+
+    await Cab.updateMany({ assignedOperator: user._id, _id: { $ne: cab._id } }, { assignedOperator: null });
+    cab.assignedOperator = user._id;
+    await cab.save();
+
+    user.role = 'Cab Operator';
+    await user.save();
+
+    await Log.create({
+      action: 'cab_operator_mapped',
+      user: req.user.id,
+      details: { targetUserId: user._id, cabId: normalizedCabId }
+    });
+
+    await createNotification({
+      recipient: user._id,
+      title: 'Cab assignment updated',
+      message: `You are now assigned to cab ${normalizedCabId}.`,
+      type: 'info',
+      metadata: { cabId: normalizedCabId },
+      io: req.io
+    });
+
+    res.json({ user, cab });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getPendingBookings,
   approveBooking,
@@ -280,7 +383,10 @@ module.exports = {
   updateOrderStatus,
   generateReports,
   getClassroomsByAdmin,
+  getFleetCabs,
   getUsers,
   updateUserRole,
-  getVendorOrders
+  getVendorOrders,
+  updateVendorRestaurantMapping,
+  updateCabOperatorMapping
 };

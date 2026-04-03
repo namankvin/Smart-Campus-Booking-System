@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { adminService, menuService } from '../services/api';
@@ -8,8 +8,7 @@ const VendorDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const defaultVendorName = useMemo(() => user?.name || '', [user]);
-  const [vendorName, setVendorName] = useState('');
+  const vendorName = user?.assignedRestaurant || '';
   const [menuDate, setMenuDate] = useState(new Date().toISOString().split('T')[0]);
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState({ name: '', description: '', price: '', category: '', isAvailable: true });
@@ -31,7 +30,7 @@ const VendorDashboard = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await adminService.getVendorOrders(vendorName);
+      const res = await adminService.getVendorOrders();
       setOrders(res.data || []);
     } catch (err) {
       setError('Failed to fetch orders');
@@ -39,16 +38,13 @@ const VendorDashboard = () => {
   };
 
   useEffect(() => {
-    if (!vendorName && defaultVendorName) {
-      setVendorName(defaultVendorName);
-      return;
-    }
+    if (!vendorName) return;
 
     const loadVendorData = async () => {
       try {
         const [menuRes, ordersRes] = await Promise.all([
           menuService.getByVendor(vendorName, menuDate),
-          adminService.getVendorOrders(vendorName)
+          adminService.getVendorOrders()
         ]);
         setItems(menuRes.data.items || []);
         setOrders(ordersRes.data || []);
@@ -57,10 +53,8 @@ const VendorDashboard = () => {
       }
     };
 
-    if (vendorName) {
-      loadVendorData();
-    }
-  }, [vendorName, menuDate, defaultVendorName]);
+    loadVendorData();
+  }, [vendorName, menuDate]);
 
   const handleLogout = () => {
     logout();
@@ -68,6 +62,11 @@ const VendorDashboard = () => {
   };
 
   const handleAddItem = async () => {
+    if (!vendorName) {
+      setError('Your account is not mapped to a restaurant. Contact admin.');
+      return;
+    }
+
     if (!newItem.name || !newItem.price) {
       setError('Item name and price are required');
       return;
@@ -75,7 +74,6 @@ const VendorDashboard = () => {
 
     try {
       await menuService.addItems({
-        vendor: vendorName,
         date: menuDate,
         items: [{ ...newItem, price: Number(newItem.price) }]
       });
@@ -89,9 +87,14 @@ const VendorDashboard = () => {
   };
 
   const toggleItemAvailability = async (index) => {
+    if (!vendorName) {
+      setError('Your account is not mapped to a restaurant. Contact admin.');
+      return;
+    }
+
     const updated = items.map((item, i) => (i === index ? { ...item, isAvailable: !item.isAvailable } : item));
     try {
-      await menuService.updateItems({ vendor: vendorName, date: menuDate, items: updated });
+      await menuService.updateItems({ date: menuDate, items: updated });
       setItems(updated);
       setSuccess('Menu updated');
       setError('');
@@ -129,6 +132,7 @@ const VendorDashboard = () => {
           <p>
             Keep the menu current, toggle availability, and advance order status as kitchen prep moves forward.
           </p>
+          {vendorName && <p><strong>Mapped restaurant:</strong> {vendorName}</p>}
           <div className="metric-row" style={{ marginTop: '18px' }}>
             <div className="metric-card">
               <strong>{menuTotal}</strong>
@@ -148,18 +152,14 @@ const VendorDashboard = () => {
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
+        {!vendorName && (
+          <div className="alert alert-warning">
+            Your vendor account is not mapped to a restaurant yet. Ask admin to map your email to a restaurant.
+          </div>
+        )}
+
         <div className="card">
           <h2>Menu Management</h2>
-          <div className="form-group">
-            <label>Vendor Outlet Name</label>
-            <input
-              type="text"
-              value={vendorName}
-              onChange={(e) => setVendorName(e.target.value)}
-              placeholder="e.g. Taaza Tiffins"
-            />
-          </div>
-
           <div className="form-group">
             <label>Date</label>
             <input type="date" value={menuDate} onChange={(e) => setMenuDate(e.target.value)} />
@@ -199,7 +199,7 @@ const VendorDashboard = () => {
               onChange={(e) => setNewItem((prev) => ({ ...prev, price: e.target.value }))}
             />
           </div>
-          <button className="button" onClick={handleAddItem}>Add Item</button>
+          <button className="button" onClick={handleAddItem} disabled={!vendorName}>Add Item</button>
 
           <h3 style={{ marginTop: '20px' }}>Current Menu</h3>
           {items.length === 0 ? (

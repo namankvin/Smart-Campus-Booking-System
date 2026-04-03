@@ -23,9 +23,12 @@ jest.mock('../services/api', () => ({
     generateReports: jest.fn(),
     getUsers: jest.fn(),
     getClassrooms: jest.fn(),
+    getCabs: jest.fn(),
     approveBooking: jest.fn(),
     rejectBooking: jest.fn(),
     updateUserRole: jest.fn(),
+    mapVendorRestaurant: jest.fn(),
+    mapCabOperator: jest.fn(),
     getVendorOrders: jest.fn(),
     updateOrderStatus: jest.fn()
   },
@@ -61,6 +64,9 @@ describe('AdminDashboard', () => {
     });
     adminService.getClassrooms.mockResolvedValue({
       data: [{ _id: 'classroom-1', name: 'LHC-101', capacity: 80, location: 'LHC Block A', isActive: true }]
+    });
+    adminService.getCabs.mockResolvedValue({
+      data: [{ _id: 'cab-1', id: 'CAB-001', routeName: 'North Campus Loop', assignedOperator: null }]
     });
     adminService.updateUserRole.mockResolvedValue({ data: { _id: 'user-1', role: 'Vendor' } });
     classroomService.create.mockResolvedValue({ data: { _id: 'classroom-2', name: 'CSE-102' } });

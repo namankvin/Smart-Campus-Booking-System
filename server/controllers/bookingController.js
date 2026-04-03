@@ -2,7 +2,8 @@ const Booking = require('../models/Booking');
 const Menu = require('../models/Menu');
 const Cab = require('../models/Cab');
 const Log = require('../models/Log');
-const { createNotification, notifyRoles } = require('../utils/notifications');
+const User = require('../models/User');
+const { createNotification, notifyRoles, notifyUsers } = require('../utils/notifications');
 
 const ACTIVE_FOOD_STATUSES = ['Accepted', 'Preparing', 'Ready'];
 
@@ -416,8 +417,13 @@ const placeFoodOrder = async (req, res, io) => {
       io
     });
 
-    await notifyRoles({
-      roles: ['Vendor'],
+    const mappedVendors = await User.find({
+      role: 'Vendor',
+      assignedRestaurant: vendor
+    }, '_id');
+
+    await notifyUsers({
+      recipients: mappedVendors.map((vendorUser) => vendorUser._id),
       title: 'New food order',
       message: `A new order was placed for ${vendor}.`,
       type: 'info',
@@ -476,7 +482,10 @@ const bookCab = async (req, res, io) => {
       return res.status(400).json({ error: 'You already have an active cab booking' });
     }
 
-    const availableCab = await Cab.findOne({ isAvailable: true });
+    const availableCab = await Cab.findOne({
+      isAvailable: true,
+      assignedOperator: { $ne: null }
+    }) || await Cab.findOne({ isAvailable: true });
     if (!availableCab) {
       return res.status(409).json({ error: 'No cabs available for selected time' });
     }
@@ -512,14 +521,25 @@ const bookCab = async (req, res, io) => {
       io
     });
 
-    await notifyRoles({
-      roles: ['Cab Operator'],
-      title: 'New cab assignment',
-      message: `Cab ${availableCab.id} has a new booking.`,
-      type: 'info',
-      metadata: { bookingId: booking._id, cabId: availableCab.id },
-      io
-    });
+    if (availableCab.assignedOperator) {
+      await notifyUsers({
+        recipients: [availableCab.assignedOperator],
+        title: 'New cab assignment',
+        message: `Cab ${availableCab.id} has a new booking.`,
+        type: 'info',
+        metadata: { bookingId: booking._id, cabId: availableCab.id },
+        io
+      });
+    } else {
+      await notifyRoles({
+        roles: ['Cab Operator'],
+        title: 'New cab assignment',
+        message: `Cab ${availableCab.id} has a new booking.`,
+        type: 'info',
+        metadata: { bookingId: booking._id, cabId: availableCab.id },
+        io
+      });
+    }
     
     io.emit('new_cab_booking', { booking, cab: availableCab });
 
