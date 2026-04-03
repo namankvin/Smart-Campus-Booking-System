@@ -111,7 +111,7 @@ const FoodOrdering = ({ onSuccess }) => {
           ) : (
             menus.map((item) => (
               <div key={item.name} className="metric-card" style={{ marginBottom: '10px' }}>
-                <div><strong>{item.name}</strong> - ${item.price}</div>
+                <div><strong>{item.name}</strong> - ₹{item.price}</div>
                 <small>{item.description || 'Freshly prepared item'}</small>
                 <div style={{ marginTop: '6px', color: '#9fb0ca' }}>
                   Category: {item.category || 'General'}
@@ -139,11 +139,11 @@ const FoodOrdering = ({ onSuccess }) => {
           <h3>Cart</h3>
           {cart.map(item => (
             <div key={item.name} style={{ padding: '10px', background: 'rgba(255,255,255,0.08)', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-              <span>{item.name} x {item.quantity} = ${item.price * item.quantity}</span>
+              <span>{item.name} x {item.quantity} = ₹{item.price * item.quantity}</span>
               <button onClick={() => removeFromCart(item.name)} className="button button-danger">Remove</button>
             </div>
           ))}
-          <h3>Total: ${totalCost}</h3>
+          <h3>Total: ₹{totalCost}</h3>
           
           <div className="form-group">
             <label>Pickup Date & Time</label>

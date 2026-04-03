@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { notificationService } from '../services/api';
 
@@ -6,6 +6,8 @@ const NotificationCenter = () => {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const triggerRef = useRef(null);
+  const [panelStyle, setPanelStyle] = useState({});
 
   const fetchNotifications = async () => {
     try {
@@ -73,14 +75,25 @@ const NotificationCenter = () => {
     }
   };
 
+  const handleToggle = () => {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPanelStyle({
+        top: `${rect.bottom + 8}px`,
+        right: `${window.innerWidth - rect.right}px`
+      });
+    }
+    setOpen((prev) => !prev);
+  };
+
   return (
     <div className="notification-center">
-      <button className="notification-trigger" onClick={() => setOpen((prev) => !prev)}>
+      <button ref={triggerRef} className="notification-trigger" onClick={handleToggle}>
         Notifications {unreadCount > 0 ? `(${unreadCount})` : ''}
       </button>
 
       {open && (
-        <div className="notification-panel">
+        <div className="notification-panel" style={panelStyle}>
           <div className="notification-header">
             <strong>Notifications</strong>
             <button className="button" onClick={markAllRead}>Mark all read</button>
