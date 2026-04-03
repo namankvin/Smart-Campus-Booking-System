@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '../services/authContext';
 import { cabService } from '../services/api';
 import NotificationCenter from '../components/NotificationCenter';
@@ -8,24 +9,27 @@ const CabOperatorDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [cabs, setCabs] = useState([]);
-  const [newCab, setNewCab] = useState({ id: '', driver: '', capacity: 4 });
+  const [cab, setCab] = useState(null);
+  const [stats, setStats] = useState({ totalAssignedRides: 0, upcomingRides: 0, completedRides: 0 });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const availableCount = cabs.length;
-
-  const fetchCabs = async () => {
+  const fetchOperatorStats = async () => {
     try {
-      const res = await cabService.getAvailable();
-      setCabs(res.data || []);
+      setLoading(true);
+      setError('');
+      const res = await cabService.getMyStats();
+      setCab(res.data?.cab || null);
+      setStats(res.data?.stats || { totalAssignedRides: 0, upcomingRides: 0, completedRides: 0 });
     } catch (err) {
-      setError('Failed to fetch cabs');
+      setError(err.response?.data?.error || 'Failed to fetch cab statistics');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCabs();
+    fetchOperatorStats();
   }, []);
 
   const handleLogout = () => {
@@ -33,26 +37,13 @@ const CabOperatorDashboard = () => {
     navigate('/login');
   };
 
-  const handleCreateCab = async () => {
-    if (!newCab.id) {
-      setError('Cab ID is required');
-      return;
-    }
+  if (loading) return <div className="loading">Loading cab operator dashboard...</div>;
 
-    try {
-      await cabService.create({
-        id: newCab.id,
-        driver: newCab.driver,
-        capacity: Number(newCab.capacity || 4)
-      });
-      setSuccess('Cab added successfully');
-      setError('');
-      setNewCab({ id: '', driver: '', capacity: 4 });
-      fetchCabs();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add cab');
-    }
-  };
+  const routeStops = Array.isArray(cab?.routeStops) ? cab.routeStops : [];
+  const currentStopIndex = routeStops.findIndex((stop) => stop === cab?.currentLocation);
+  const nextStopIndex = routeStops.length > 0 && currentStopIndex >= 0
+    ? (currentStopIndex + 1) % routeStops.length
+    : -1;
 
   return (
     <div>
@@ -68,77 +59,73 @@ const CabOperatorDashboard = () => {
       <div className="container dashboard-stack">
         <div className="page-intro">
           <div className="section-kicker">Fleet</div>
-          <h2>Keep the campus cab fleet available, visible, and ready for booking.</h2>
+          <h2>Track your assigned cab and monitor ride activity in one place.</h2>
           <p>
-            Add new cabs, review active inventory, and ensure pickup details stay readable for riders and operators.
+            Cab creation is managed by admins. Operators can view only their assigned cab statistics and route coverage.
           </p>
           <div className="metric-row" style={{ marginTop: '18px' }}>
             <div className="metric-card">
-              <strong>{availableCount}</strong>
-              <span>Available cabs</span>
+              <strong>{stats.totalAssignedRides}</strong>
+              <span>Total assigned rides</span>
             </div>
             <div className="metric-card">
-              <strong>{newCab.capacity || 4}</strong>
-              <span>Draft capacity</span>
+              <strong>{stats.upcomingRides}</strong>
+              <span>Upcoming rides</span>
             </div>
             <div className="metric-card">
-              <strong>Live</strong>
-              <span>Operator dashboard</span>
+              <strong>{stats.completedRides}</strong>
+              <span>Completed rides</span>
             </div>
           </div>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
 
         <div className="card">
-          <h2>Add Cab</h2>
-          <div className="form-group">
-            <label>Cab ID</label>
-            <input value={newCab.id} onChange={(e) => setNewCab((p) => ({ ...p, id: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label>Driver</label>
-            <input value={newCab.driver} onChange={(e) => setNewCab((p) => ({ ...p, driver: e.target.value }))} />
-          </div>
-          <div className="form-group">
-            <label>Capacity</label>
-            <input
-              type="number"
-              min="1"
-              value={newCab.capacity}
-              onChange={(e) => setNewCab((p) => ({ ...p, capacity: e.target.value }))}
-            />
-          </div>
-          <button className="button" onClick={handleCreateCab}>Create Cab</button>
+          <h2>Assigned Cab</h2>
+          {!cab ? (
+            <p>No cab is assigned to your account yet.</p>
+          ) : (
+            <div className="surface-grid">
+              <div>
+                <p><strong>Cab ID:</strong> {cab.id}</p>
+                <p><strong>Driver:</strong> {cab.driver || user?.name || '-'}</p>
+                <p><strong>Capacity:</strong> {cab.capacity}</p>
+                <p><strong>Current location:</strong> {cab.currentLocation || '-'}</p>
+              </div>
+              <div>
+                <p><strong>Route:</strong> {cab.routeName || 'Not defined'}</p>
+                {routeStops.length > 0 ? (
+                  <>
+                    <div className="route-map" aria-label="Assigned cab route">
+                      {routeStops.map((stop, index) => {
+                        const isCurrent = stop === cab.currentLocation;
+                        const isNext = index === nextStopIndex;
+                        const isCompleted = currentStopIndex >= 0 && index < currentStopIndex;
+                        const stopClassName = `route-stop ${isCurrent ? 'is-current' : isNext ? 'is-next' : isCompleted ? 'is-completed' : 'is-upcoming'}`;
+
+                        return (
+                          <React.Fragment key={`${stop}-${index}`}>
+                            <span className={stopClassName}>{stop}</span>
+                            {index < routeStops.length - 1 && <FiArrowRight className="route-arrow" aria-hidden="true" />}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <p>No route stops configured.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="card">
-          <h2>Available Cabs</h2>
-          {cabs.length === 0 ? (
-            <p>No available cabs right now.</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Cab ID</th>
-                  <th>Driver</th>
-                  <th>Capacity</th>
-                  <th>Location</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cabs.map((cab) => (
-                  <tr key={cab._id}>
-                    <td>{cab.id}</td>
-                    <td>{cab.driver || '-'}</td>
-                    <td>{cab.capacity}</td>
-                    <td>{cab.currentLocation || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <h2>Operator Access</h2>
+          <p>
+            Cab operators have read-only access to assigned cab insights. Admins control cab creation and fleet configuration.
+          </p>
         </div>
       </div>
     </div>

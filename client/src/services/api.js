@@ -47,6 +47,7 @@ export const menuService = {
 
 export const cabService = {
   getAvailable: () => api.get('/cabs'),
+  getMyStats: () => api.get('/cabs/operator/my-stats'),
   create: (data) => api.post('/cabs', data),
   updateStatus: (id, data) => api.put(`/cabs/${id}`, data)
 };
