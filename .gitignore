@@ -7,3 +7,14 @@ node_modules/
 *.log
 dist/
 build/
+
+# Local AI/code-review tooling artifacts
+.claude/
+.cursor/
+.cursorrules
+.mcp.json
+.opencode.json
+.windsurfrules
+AGENTS.md
+CLAUDE.md
+GEMINI.md
