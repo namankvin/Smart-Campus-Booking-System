@@ -5,7 +5,7 @@ const Log = require('../models/Log');
 const Cab = require('../models/Cab');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const ADMIN_ALLOWED_EMAILS = ['namank1506@gmail.com'];
+const ADMIN_ALLOWED_EMAILS = ['namank1506@gmail.com', 'apa123.2006@gmail.com'];
 
 const logAuthAttempt = async ({ action, user, details }) => {
   try {
