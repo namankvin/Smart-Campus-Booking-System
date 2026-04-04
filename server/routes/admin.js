@@ -12,7 +12,8 @@ const {
   updateUserRole,
   getVendorOrders,
   updateVendorRestaurantMapping,
-  updateCabOperatorMapping
+  updateCabOperatorMapping,
+  deleteUser
 } = require('../controllers/adminController');
 
 module.exports = (io) => {
@@ -30,6 +31,7 @@ module.exports = (io) => {
   router.put('/users/:id/role', authenticateToken, authorize('Admin'), updateUserRole);
   router.put('/users/:id/vendor-mapping', authenticateToken, authorize('Admin'), updateVendorRestaurantMapping);
   router.put('/users/:id/cab-mapping', authenticateToken, authorize('Admin'), updateCabOperatorMapping);
+  router.delete('/users/:id', authenticateToken, authorize('Admin'), deleteUser);
   
   return router;
 };

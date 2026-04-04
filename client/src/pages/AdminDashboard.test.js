@@ -27,6 +27,7 @@ jest.mock('../services/api', () => ({
     approveBooking: jest.fn(),
     rejectBooking: jest.fn(),
     updateUserRole: jest.fn(),
+    deleteUser: jest.fn(),
     mapVendorRestaurant: jest.fn(),
     mapCabOperator: jest.fn(),
     getVendorOrders: jest.fn(),

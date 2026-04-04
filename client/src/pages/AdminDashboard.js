@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { adminService, classroomService } from '../services/api';
 import NotificationCenter from '../components/NotificationCenter';
+import { demoVendorMenus, demoCabs } from '../data/demoData';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -193,6 +194,30 @@ const AdminDashboard = () => {
   const totalVendorOrdersManaged = reports?.byType?.food || 0;
   const totalCabOrdersHandled = reports?.byType?.cab || 0;
 
+  const restaurantOptions = [
+    ...new Set([
+      ...Object.keys(demoVendorMenus || {}),
+      ...users.map((item) => item.assignedRestaurant).filter(Boolean),
+      vendorMappingForm.restaurantName
+    ].filter(Boolean))
+  ];
+
+  const cabOptions = [
+    ...new Map(
+      [...(cabs || []), ...(demoCabs || [])]
+        .filter((cab) => cab?.id)
+        .map((cab) => [cab.id, cab])
+    ).values()
+  ];
+
+  const getRoleOptionsForUser = (currentRole) => {
+    if (['Guest', 'Vendor', 'Cab Operator'].includes(currentRole)) {
+      return ['Guest', 'Vendor', 'Cab Operator'];
+    }
+
+    return ['Student', 'Faculty', 'Vendor', 'Cab Operator', 'Admin', 'Guest'];
+  };
+
   return (
     <div>
       {showRoleToast && <div className="role-toast">User role updated</div>}
@@ -285,7 +310,6 @@ const AdminDashboard = () => {
                   <th>Role</th>
                   <th>Restaurant Mapping</th>
                   <th>Cab Mapping</th>
-                  <th>Update</th>
                 </tr>
               </thead>
               <tbody>
@@ -298,17 +322,13 @@ const AdminDashboard = () => {
                         value={item.role}
                         onChange={(e) => handleRoleChange(item._id, e.target.value)}
                       >
-                        <option value="Student">Student</option>
-                        <option value="Faculty">Faculty</option>
-                        <option value="Vendor">Vendor</option>
-                        <option value="Cab Operator">Cab Operator</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Guest">Guest</option>
+                        {getRoleOptionsForUser(item.role).map((roleOption) => (
+                          <option key={roleOption} value={roleOption}>{roleOption}</option>
+                        ))}
                       </select>
                     </td>
                     <td>{item.assignedRestaurant || '-'}</td>
                     <td>{cabs.find((cab) => cab.assignedOperator?._id === item._id)?.id || '-'}</td>
-                    <td>Saved on select</td>
                   </tr>
                 ))}
               </tbody>
@@ -336,12 +356,17 @@ const AdminDashboard = () => {
               </div>
               <div className="form-group">
                 <label>Restaurant Name</label>
-                <input
-                  type="text"
+                <select
                   value={vendorMappingForm.restaurantName}
                   onChange={(e) => setVendorMappingForm((prev) => ({ ...prev, restaurantName: e.target.value }))}
-                  placeholder="e.g. Taaza Tiffins"
-                />
+                >
+                  <option value="">Select restaurant</option>
+                  {restaurantOptions.map((restaurant) => (
+                    <option key={restaurant} value={restaurant}>
+                      {restaurant}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <button type="submit" className="button button-success">Save Vendor Mapping</button>
@@ -373,8 +398,8 @@ const AdminDashboard = () => {
                   onChange={(e) => setCabMappingForm((prev) => ({ ...prev, cabId: e.target.value }))}
                 >
                   <option value="">Select cab</option>
-                  {cabs.map((cab) => (
-                    <option key={cab._id} value={cab.id}>
+                  {cabOptions.map((cab) => (
+                    <option key={cab._id || cab.id} value={cab.id}>
                       {cab.id} ({cab.routeName || 'No route'})
                     </option>
                   ))}

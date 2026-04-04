@@ -3,7 +3,35 @@ const User = require('../models/User');
 const Log = require('../models/Log');
 const Classroom = require('../models/Classroom');
 const Cab = require('../models/Cab');
+const Notification = require('../models/Notification');
 const { createNotification } = require('../utils/notifications');
+
+const DEMO_CAB_CATALOG = [
+  {
+    id: 'NITW-EV-01',
+    driver: 'Ramesh',
+    capacity: 4,
+    currentLocation: 'Main Gate',
+    routeName: 'North Campus Loop',
+    routeStops: ['Main Gate', 'Academic Block', 'Library', 'Hostel Circle', 'Sports Complex']
+  },
+  {
+    id: 'NITW-EV-07',
+    driver: 'Suresh',
+    capacity: 6,
+    currentLocation: 'Hostel Circle',
+    routeName: 'Hostel Connector',
+    routeStops: ['Hostel Circle', 'LHC', 'Library', 'Main Gate']
+  },
+  {
+    id: 'NITW-EV-12',
+    driver: 'Akash',
+    capacity: 4,
+    currentLocation: 'Library Junction',
+    routeName: 'Central Campus Shuttle',
+    routeStops: ['Library Junction', 'CSE Department', 'Sports Complex', 'Main Gate']
+  }
+];
 
 // Get all pending classroom bookings
 const getPendingBookings = async (req, res) => {
@@ -238,10 +266,43 @@ const updateUserRole = async (req, res) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
+    const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    const guestRolePool = ['Guest', 'Vendor', 'Cab Operator'];
+    if (guestRolePool.includes(user.role) && !guestRolePool.includes(role)) {
+      return res.status(400).json({
+        error: 'Guest, Vendor, and Cab Operator users can only be assigned Guest, Vendor, or Cab Operator roles.'
+      });
+    }
+
+    if (role === 'Vendor' && !String(user.assignedRestaurant || '').trim()) {
+      return res.status(400).json({
+        error: 'Cannot set Vendor role without restaurant mapping. Use Vendor to Restaurant Mapping section.'
+      });
+    }
+
+    if (role === 'Cab Operator') {
+      const hasAssignedCab = await Cab.exists({ assignedOperator: user._id });
+      if (!hasAssignedCab) {
+        return res.status(400).json({
+          error: 'Cannot set Cab Operator role without cab mapping. Use Cab Operator to Cab Mapping section.'
+        });
+      }
+    }
+
+    if (role !== 'Vendor') {
+      user.assignedRestaurant = '';
+    }
+
+    if (role !== 'Cab Operator') {
+      await Cab.updateMany({ assignedOperator: user._id }, { assignedOperator: null });
+    }
+
+    user.role = role;
+    await user.save();
 
     await Log.create({
       action: 'user_role_updated',
@@ -335,7 +396,7 @@ const updateCabOperatorMapping = async (req, res) => {
       return res.status(400).json({ error: 'Cab ID is required' });
     }
 
-    const [user, cab] = await Promise.all([
+    const [user, existingCab] = await Promise.all([
       User.findById(id),
       Cab.findOne({ id: normalizedCabId })
     ]);
@@ -344,8 +405,22 @@ const updateCabOperatorMapping = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    let cab = existingCab;
     if (!cab) {
-      return res.status(404).json({ error: 'Cab not found' });
+      const demoCab = DEMO_CAB_CATALOG.find((item) => item.id === normalizedCabId);
+      if (!demoCab) {
+        return res.status(404).json({ error: 'Cab not found' });
+      }
+
+      cab = await Cab.create({
+        id: demoCab.id,
+        driver: demoCab.driver,
+        capacity: demoCab.capacity,
+        isAvailable: true,
+        currentLocation: demoCab.currentLocation,
+        routeName: demoCab.routeName,
+        routeStops: demoCab.routeStops
+      });
     }
 
     await Cab.updateMany({ assignedOperator: user._id, _id: { $ne: cab._id } }, { assignedOperator: null });
@@ -376,6 +451,38 @@ const updateCabOperatorMapping = async (req, res) => {
   }
 };
 
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (String(req.user.id) === String(id)) {
+      return res.status(400).json({ error: 'You cannot delete your own admin account' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await Promise.all([
+      Cab.updateMany({ assignedOperator: user._id }, { assignedOperator: null }),
+      Booking.deleteMany({ user: user._id }),
+      Notification.deleteMany({ recipient: user._id }),
+      User.deleteOne({ _id: user._id })
+    ]);
+
+    await Log.create({
+      action: 'user_deleted',
+      user: req.user.id,
+      details: { deletedUserId: user._id, email: user.email, role: user.role }
+    });
+
+    return res.json({ message: 'User deleted successfully', deletedUserId: user._id.toString() });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getPendingBookings,
   approveBooking,
@@ -388,5 +495,6 @@ module.exports = {
   updateUserRole,
   getVendorOrders,
   updateVendorRestaurantMapping,
-  updateCabOperatorMapping
+  updateCabOperatorMapping,
+  deleteUser
 };

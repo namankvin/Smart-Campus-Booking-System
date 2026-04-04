@@ -5,7 +5,7 @@ const Log = require('../models/Log');
 const Cab = require('../models/Cab');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const ADMIN_ALLOWED_EMAILS = ['namank1506@gmail.com', 'apa123.2006@gmail.com'];
+const ADMIN_ALLOWED_EMAILS = ['namank1506@gmail.com', 'apa123.2006@gmail.com', 'avi.verma2006@gmail.com'];
 
 const logAuthAttempt = async ({ action, user, details }) => {
   try {
@@ -79,6 +79,16 @@ const resolveUserRole = async ({ user, requestedRole, email, institutionalDomain
     }
 
     if (user.role === 'Guest') {
+      const hasVendorMapping = Boolean(String(user.assignedRestaurant || '').trim());
+      if (hasVendorMapping) {
+        return { role: 'Vendor' };
+      }
+
+      const hasCabMapping = await Cab.exists({ assignedOperator: user._id });
+      if (hasCabMapping) {
+        return { role: 'Cab Operator' };
+      }
+
       if (requestedRole === 'Student') {
         if (!isInstitutionalEmail(normalizedEmail, institutionalDomain)) {
           return {

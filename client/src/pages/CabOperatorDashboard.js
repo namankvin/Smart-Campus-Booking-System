@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '../services/authContext';
 import { cabService } from '../services/api';
 import NotificationCenter from '../components/NotificationCenter';
+import { demoCabs, demoRouteSuggestions } from '../data/demoData';
 
 const CabOperatorDashboard = () => {
   const { user, logout } = useAuth();
@@ -14,23 +15,43 @@ const CabOperatorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchOperatorStats = async () => {
+  const fetchOperatorStats = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       const res = await cabService.getMyStats();
-      setCab(res.data?.cab || null);
+      const fetchedCab = res.data?.cab || null;
+      if (fetchedCab) {
+        const demoMatch = demoCabs.find((item) => item.id === fetchedCab.id);
+        const fallbackRouteStops = [
+          fetchedCab.currentLocation || demoMatch?.currentLocation,
+          ...demoRouteSuggestions
+        ].filter(Boolean).slice(0, 5);
+
+        setCab({
+          ...demoMatch,
+          ...fetchedCab,
+          driver: fetchedCab.driver || demoMatch?.driver || user?.name || '-',
+          currentLocation: fetchedCab.currentLocation || demoMatch?.currentLocation || 'Main Gate',
+          routeName: fetchedCab.routeName || 'Campus Mobility Loop',
+          routeStops: Array.isArray(fetchedCab.routeStops) && fetchedCab.routeStops.length > 0
+            ? fetchedCab.routeStops
+            : fallbackRouteStops
+        });
+      } else {
+        setCab(null);
+      }
       setStats(res.data?.stats || { totalAssignedRides: 0, upcomingRides: 0, completedRides: 0 });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to fetch cab statistics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.name]);
 
   useEffect(() => {
     fetchOperatorStats();
-  }, []);
+  }, [fetchOperatorStats]);
 
   const handleLogout = () => {
     logout();

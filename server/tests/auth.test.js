@@ -234,6 +234,34 @@ describe('Auth API', () => {
     expect(res.body.user.role).toBe('Student');
   });
 
+  it('promotes a guest user to vendor when restaurant mapping exists', async () => {
+    await User.create({
+      googleId: 'guest-vendor-sub',
+      email: 'mapped.vendor@gmail.com',
+      name: 'Mapped Guest Vendor',
+      role: 'Guest',
+      assignedRestaurant: 'Taaza Tiffins'
+    });
+
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'guest-vendor-sub',
+        email: 'mapped.vendor@gmail.com',
+        name: 'Mapped Guest Vendor'
+      })
+    });
+
+    const { app } = createAppServer();
+
+    const res = await request(app)
+      .post('/api/auth/google-login')
+      .send({ credential: 'guest-vendor-promo-token', role: 'Vendor' })
+      .expect(200);
+
+    expect(res.body.user.role).toBe('Vendor');
+    expect(res.body.user.assignedRestaurant).toBe('Taaza Tiffins');
+  });
+
   it('allows quick development login in non-production mode', async () => {
     const { app } = createAppServer();
 

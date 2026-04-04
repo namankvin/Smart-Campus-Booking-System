@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { adminService, menuService } from '../services/api';
 import NotificationCenter from '../components/NotificationCenter';
+import { demoVendorMenus } from '../data/demoData';
 
 const VendorDashboard = () => {
   const { user, logout } = useAuth();
@@ -15,6 +16,7 @@ const VendorDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usingDemoMenu, setUsingDemoMenu] = useState(false);
 
   const menuTotal = items.length;
   const activeOrders = orders.filter((order) => ['Accepted', 'Preparing', 'Ready'].includes(order.status)).length;
@@ -22,7 +24,14 @@ const VendorDashboard = () => {
   const fetchMenu = async () => {
     try {
       const res = await menuService.getByVendor(vendorName, menuDate);
-      setItems(res.data.items || []);
+      const fetchedItems = res.data?.items || [];
+      if (fetchedItems.length === 0 && demoVendorMenus[vendorName]) {
+        setItems(demoVendorMenus[vendorName]);
+        setUsingDemoMenu(true);
+      } else {
+        setItems(fetchedItems);
+        setUsingDemoMenu(false);
+      }
     } catch (err) {
       setError('Failed to fetch menu');
     }
@@ -46,7 +55,14 @@ const VendorDashboard = () => {
           menuService.getByVendor(vendorName, menuDate),
           adminService.getVendorOrders()
         ]);
-        setItems(menuRes.data.items || []);
+        const fetchedItems = menuRes.data?.items || [];
+        if (fetchedItems.length === 0 && demoVendorMenus[vendorName]) {
+          setItems(demoVendorMenus[vendorName]);
+          setUsingDemoMenu(true);
+        } else {
+          setItems(fetchedItems);
+          setUsingDemoMenu(false);
+        }
         setOrders(ordersRes.data || []);
       } catch (err) {
         setError('Failed to fetch vendor data');
@@ -78,6 +94,7 @@ const VendorDashboard = () => {
         items: [{ ...newItem, price: Number(newItem.price) }]
       });
       setSuccess('Menu item added');
+      setUsingDemoMenu(false);
       setError('');
       setNewItem({ name: '', description: '', price: '', category: '', isAvailable: true });
       fetchMenu();
@@ -97,6 +114,7 @@ const VendorDashboard = () => {
       await menuService.updateItems({ date: menuDate, items: updated });
       setItems(updated);
       setSuccess('Menu updated');
+      setUsingDemoMenu(false);
       setError('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update menu');
@@ -155,6 +173,12 @@ const VendorDashboard = () => {
         {!vendorName && (
           <div className="alert alert-warning">
             Your vendor account is not mapped to a restaurant yet. Ask admin to map your email to a restaurant.
+          </div>
+        )}
+
+        {vendorName && usingDemoMenu && (
+          <div className="alert alert-warning">
+            Showing demo menu for {vendorName}. Add or edit items to save your live menu.
           </div>
         )}
 

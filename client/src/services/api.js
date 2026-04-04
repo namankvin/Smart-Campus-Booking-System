@@ -63,6 +63,7 @@ export const adminService = {
   getCabs: () => api.get('/admin/cabs'),
   getUsers: () => api.get('/admin/users'),
   updateUserRole: (id, role) => api.put(`/admin/users/${id}/role`, { role }),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   mapVendorRestaurant: (id, restaurantName) => api.put(`/admin/users/${id}/vendor-mapping`, { restaurantName }),
   mapCabOperator: (id, cabId) => api.put(`/admin/users/${id}/cab-mapping`, { cabId })
 };
