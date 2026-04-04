@@ -242,7 +242,7 @@ const VendorDashboard = () => {
                 {items.map((item, index) => (
                   <tr key={`${item.name}-${index}`}>
                     <td>{item.name}</td>
-                    <td>${item.price}</td>
+                    <td>₹{item.price}</td>
                     <td>{item.isAvailable ? 'Yes' : 'No'}</td>
                     <td>
                       <button className="button" onClick={() => toggleItemAvailability(index)}>
