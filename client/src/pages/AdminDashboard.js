@@ -16,13 +16,14 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [roleToastVersion, setRoleToastVersion] = useState(0);
+  const [showRoleToast, setShowRoleToast] = useState(false);
   const [vendorMappingForm, setVendorMappingForm] = useState({ userId: '', restaurantName: '' });
   const [cabMappingForm, setCabMappingForm] = useState({ userId: '', cabId: '' });
   const [classroomForm, setClassroomForm] = useState({
     name: '',
     capacity: '',
-    location: '',
-    amenities: ''
+    location: ''
   });
 
   const fetchData = async () => {
@@ -57,6 +58,16 @@ const AdminDashboard = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (!roleToastVersion) return undefined;
+    setShowRoleToast(true);
+    const timeoutId = setTimeout(() => {
+      setShowRoleToast(false);
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [roleToastVersion]);
+
   const handleApprove = async (id) => {
     try {
       await adminService.approveBooking(id);
@@ -77,8 +88,9 @@ const AdminDashboard = () => {
 
   const handleRoleChange = async (id, role) => {
     try {
+      setError('');
       await adminService.updateUserRole(id, role);
-      setSuccess('User role updated');
+      setRoleToastVersion(Date.now());
       setUsers((current) => current.map((item) => (item._id === id ? { ...item, role } : item)));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update role');
@@ -103,15 +115,12 @@ const AdminDashboard = () => {
       const payload = {
         name: classroomForm.name,
         capacity: Number(classroomForm.capacity),
-        location: classroomForm.location,
-        amenities: classroomForm.amenities
-          ? classroomForm.amenities.split(',').map((item) => item.trim()).filter(Boolean)
-          : []
+        location: classroomForm.location
       };
       const response = await classroomService.create(payload);
       setSuccess('Classroom created successfully');
       setClassrooms((current) => [response.data, ...current]);
-      setClassroomForm({ name: '', capacity: '', location: '', amenities: '' });
+      setClassroomForm({ name: '', capacity: '', location: '' });
     } catch (createError) {
       setError(createError.response?.data?.error || 'Failed to create classroom');
     }
@@ -186,6 +195,7 @@ const AdminDashboard = () => {
 
   return (
     <div>
+      {showRoleToast && <div className="role-toast">User role updated</div>}
       <nav className="navbar">
         <h1>Admin Dashboard</h1>
         <div className="navbar-menu">
@@ -405,15 +415,6 @@ const AdminDashboard = () => {
                   value={classroomForm.location}
                   onChange={(e) => setClassroomForm((prev) => ({ ...prev, location: e.target.value }))}
                   placeholder="e.g. LHC Block B"
-                />
-              </div>
-              <div className="form-group">
-                <label>Amenities (comma separated)</label>
-                <input
-                  type="text"
-                  value={classroomForm.amenities}
-                  onChange={(e) => setClassroomForm((prev) => ({ ...prev, amenities: e.target.value }))}
-                  placeholder="Projector, Smart Board"
                 />
               </div>
             </div>
