@@ -1,4 +1,6 @@
 :root {
+  --layout-max-width: 1200px;
+  --layout-gutter: 32px;
   --bg: #081120;
   --bg-elevated: rgba(10, 18, 32, 0.78);
   --surface: rgba(255, 255, 255, 0.08);
@@ -67,15 +69,15 @@ a {
 }
 
 .container {
-  max-width: 1200px;
+  max-width: var(--layout-max-width);
   margin: 0 auto;
-  padding: 24px;
-  width: min(1200px, calc(100% - 32px));
+  padding: 24px 0;
+  width: min(var(--layout-max-width), calc(100% - var(--layout-gutter)));
 }
 
 .navbar {
   margin: 20px auto 0;
-  width: min(1200px, calc(100% - 32px));
+  width: min(var(--layout-max-width), calc(100% - var(--layout-gutter)));
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(13, 19, 36, 0.76));
   border: 1px solid var(--border);
   color: var(--text);
@@ -285,6 +287,34 @@ a {
   border-color: rgba(251, 191, 36, 0.3);
 }
 
+.role-toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(7, 31, 22, 0.92);
+  color: #b8ffe0;
+  box-shadow: var(--shadow);
+  z-index: 1200;
+  backdrop-filter: blur(10px);
+  animation: role-toast-in 0.2s ease-out;
+}
+
+@keyframes role-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 .loading {
   text-align: center;
   padding: 48px 20px;
@@ -294,6 +324,8 @@ a {
 
 .notification-center {
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .notification-trigger {
@@ -315,8 +347,8 @@ a {
 .notification-panel {
   position: absolute;
   right: 0;
-  top: 42px;
-  width: 360px;
+  top: calc(100% + 10px);
+  width: min(360px, calc(100vw - 32px));
   max-height: 420px;
   overflow-y: auto;
   background: rgba(15, 23, 42, 0.96);
@@ -373,6 +405,15 @@ a {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+.notification-footer small {
+  color: var(--muted);
+}
+
+.notification-panel .button {
+  padding: 8px 12px;
+  font-size: 0.85rem;
 }
 
 .app-loading-shell {
@@ -746,7 +787,7 @@ a {
   }
 
   .container {
-    padding: 16px;
+    padding: 16px 0;
   }
 
   .navbar {
@@ -770,5 +811,10 @@ a {
   .tab-strip {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .notification-panel {
+    right: 0;
+    width: min(360px, calc(100vw - 24px));
   }
 }
