@@ -2,6 +2,7 @@ const request = require('supertest');
 const { createAppServer } = require('../app');
 const Classroom = require('../models/Classroom');
 const Booking = require('../models/Booking');
+const Cab = require('../models/Cab');
 const { createUserAndToken } = require('./helpers');
 
 describe('Booking API', () => {
@@ -84,5 +85,31 @@ describe('Booking API', () => {
       .expect(200);
 
     expect(res.body.status).toBe('Cancelled');
+  });
+
+  it('creates cab booking in development mode when fleet is initially empty', async () => {
+    const { app } = createAppServer();
+    const { token } = await createUserAndToken({ role: 'Student' });
+    process.env.NODE_ENV = 'development';
+
+    const requestedTime = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    const res = await request(app)
+      .post('/api/bookings/cab')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        pickupLocation: 'Main Gate',
+        dropLocation: 'Library',
+        requestedTime
+      })
+      .expect(200);
+
+    expect(res.body.booking.type).toBe('cab');
+    expect(res.body.booking.status).toBe('Confirmed');
+    expect(res.body.cab.id).toContain('DEV-CAB-');
+
+    const persistedCab = await Cab.findOne({ id: res.body.cab.id });
+    expect(persistedCab).toBeTruthy();
+    expect(persistedCab.isAvailable).toBe(false);
   });
 });

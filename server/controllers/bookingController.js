@@ -7,6 +7,23 @@ const { createNotification, notifyRoles, notifyUsers } = require('../utils/notif
 
 const ACTIVE_FOOD_STATUSES = ['Accepted', 'Preparing', 'Ready'];
 
+const createDevelopmentFallbackCab = async () => {
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  const fallbackId = `DEV-CAB-${Date.now()}`;
+  return Cab.create({
+    id: fallbackId,
+    driver: 'Dev Auto Driver',
+    capacity: 4,
+    isAvailable: true,
+    currentLocation: 'Main Gate',
+    routeName: 'Development Loop',
+    routeStops: ['Main Gate', 'Academic Block', 'Library', 'Hostel Circle']
+  });
+};
+
 const normalizeDate = (dateInput) => {
   const date = new Date(dateInput);
   date.setHours(0, 0, 0, 0);
@@ -482,7 +499,13 @@ const bookCab = async (req, res, io) => {
       isAvailable: true,
       assignedOperator: { $ne: null }
     }) || await Cab.findOne({ isAvailable: true });
-    if (!availableCab) {
+
+    let selectedCab = availableCab;
+    if (!selectedCab) {
+      selectedCab = await createDevelopmentFallbackCab();
+    }
+
+    if (!selectedCab) {
       return res.status(409).json({ error: 'No cabs available for selected time' });
     }
 
@@ -492,15 +515,15 @@ const bookCab = async (req, res, io) => {
       pickupLocation,
       dropLocation,
       date: parsedRequestedTime,
-      cabId: availableCab.id,
+      cabId: selectedCab.id,
       status: 'Confirmed'
     });
 
     await booking.save();
 
-    availableCab.isAvailable = false;
-    availableCab.currentLocation = pickupLocation;
-    await availableCab.save();
+    selectedCab.isAvailable = false;
+    selectedCab.currentLocation = pickupLocation;
+    await selectedCab.save();
     
     await Log.create({
       action: 'cab_booked',
@@ -511,35 +534,35 @@ const bookCab = async (req, res, io) => {
     await createNotification({
       recipient: req.user.id,
       title: 'Cab booking confirmed',
-      message: `Cab ${availableCab.id} has been assigned to your ride.`,
+      message: `Cab ${selectedCab.id} has been assigned to your ride.`,
       type: 'success',
-      metadata: { bookingId: booking._id, cabId: availableCab.id },
+      metadata: { bookingId: booking._id, cabId: selectedCab.id },
       io
     });
 
-    if (availableCab.assignedOperator) {
+    if (selectedCab.assignedOperator) {
       await notifyUsers({
-        recipients: [availableCab.assignedOperator],
+        recipients: [selectedCab.assignedOperator],
         title: 'New cab assignment',
-        message: `Cab ${availableCab.id} has a new booking.`,
+        message: `Cab ${selectedCab.id} has a new booking.`,
         type: 'info',
-        metadata: { bookingId: booking._id, cabId: availableCab.id },
+        metadata: { bookingId: booking._id, cabId: selectedCab.id },
         io
       });
     } else {
       await notifyRoles({
         roles: ['Cab Operator'],
         title: 'New cab assignment',
-        message: `Cab ${availableCab.id} has a new booking.`,
+        message: `Cab ${selectedCab.id} has a new booking.`,
         type: 'info',
-        metadata: { bookingId: booking._id, cabId: availableCab.id },
+        metadata: { bookingId: booking._id, cabId: selectedCab.id },
         io
       });
     }
     
-    io.emit('new_cab_booking', { booking, cab: availableCab });
+    io.emit('new_cab_booking', { booking, cab: selectedCab });
 
-    res.json({ booking, cab: availableCab });
+    res.json({ booking, cab: selectedCab });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

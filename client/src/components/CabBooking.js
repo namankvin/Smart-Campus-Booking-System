@@ -59,13 +59,8 @@ const CabBooking = ({ onSuccess }) => {
       setFormData({ pickupLocation: '', dropLocation: '', requestedTime: '' });
       if (onSuccess) onSuccess();
     } catch (err) {
-      if (usingDemoCabs) {
-        setSuccess('Demo cab booking recorded for preview mode.');
-        setError('');
-        if (onSuccess) onSuccess();
-      } else {
-        setError(err.response?.data?.error || 'Failed to book cab');
-      }
+      setSuccess('');
+      setError(err.response?.data?.error || 'Failed to book cab');
     }
   };
 

@@ -86,4 +86,36 @@ describe('CabBooking', () => {
       expect(screen.getByText('Cab booked successfully!')).toBeInTheDocument();
     });
   });
+
+  it('does not redirect when booking fails in demo-cab mode', async () => {
+    const onSuccess = jest.fn();
+    cabService.getAvailable.mockResolvedValue({ data: [] });
+    bookingService.bookCab.mockRejectedValue({
+      response: { data: { error: 'No cabs available for selected time' } }
+    });
+
+    render(<CabBooking onSuccess={onSuccess} />);
+
+    await waitFor(() => {
+      expect(cabService.getAvailable).toHaveBeenCalled();
+      expect(screen.getByText('Showing demo cab fleet because live data is unavailable.')).toBeInTheDocument();
+    });
+
+    const pickupInput = document.querySelector('input[name="pickupLocation"]');
+    const dropInput = document.querySelector('input[name="dropLocation"]');
+    const requestedTimeInput = document.querySelector('input[name="requestedTime"]');
+
+    await userEvent.type(pickupInput, 'Library');
+    await userEvent.type(dropInput, 'Main Gate');
+    fireEvent.change(requestedTimeInput, {
+      target: { value: formatDatetimeLocal(new Date(Date.now() + 60 * 60 * 1000)) }
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Book Cab' }));
+
+    await waitFor(() => {
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(screen.getByText('No cabs available for selected time')).toBeInTheDocument();
+    });
+  });
 });
